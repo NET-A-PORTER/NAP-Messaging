@@ -1,4 +1,10 @@
 {{$NEXT}}
 
+1.1.0     2012-07-30 10:59:58 Europe/London
+- added LogTrapper, to tie STD{OUT,ERR} through the logger (defaults
+  to disabled)
+- unhandled messages (of unknown types, or delivered outside our
+  subscriptions) are sent to the proper DLQ, instead of ignored
+
 1.0.0     2012-07-17 11:34:14 Europe/London
 - initial release, extracted from NAP-DocIntegrator
