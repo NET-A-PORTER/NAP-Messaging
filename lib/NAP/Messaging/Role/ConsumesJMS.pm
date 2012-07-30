@@ -2,6 +2,8 @@ package NAP::Messaging::Role::ConsumesJMS;
 use NAP::policy 'role';
 with 'CatalystX::ConsumesJMS';
 use NAP::Messaging::Validator;
+use NAP::Messaging::Catalyst::Utils qw(extract_jms_headers stuff_on_error_queue);
+require NAP::Messaging::Catalyst::Handle404;
 
 # ABSTRACT: role for NAP consumer base classes
 
@@ -121,18 +123,14 @@ L<Plack::Handler::Stomp> for details)
 
 =cut
 
-        # this might not be the cleanest way of doing it, see
-        # Plack::Handler::Stomp to see where these values come from
-        my $psgi_env = $ctx->req->can('env') ? $ctx->req->env : $ctx->engine->env;
-        my %headers = map { s/^jms\.//r, $psgi_env->{$_} }
-            grep { /^jms\./ } keys %$psgi_env;
-        $ctx->stash->{headers}=\%headers;
+        $ctx->stash->{headers} = extract_jms_headers($ctx);
 
 =item *
 
 the message payload is validated against the schema built above; if it
-fails, the error is logged, we call L</stuff_on_error_queue> with a
-prefix of C<'DLQ.failed-validation'>
+fails, the error is logged, we call
+L<stuff_on_error_queue|NAP::Messaging::Catalyst::Utils/stuff_on_error_queue>
+with a prefix of C<'DLQ.failed-validation'>
 
 =cut
 
@@ -141,10 +139,11 @@ prefix of C<'DLQ.failed-validation'>
             $validator,$message);
         if (!$ok) {
             $ctx->log->error("$validation_errors");
-            $ctx->response->status(500);
-            $self->stuff_on_error_queue(
+            $ctx->response->status(400);
+            stuff_on_error_queue(
+                $self,
                 $ctx,'DLQ.failed-validation',
-                500,
+                400,
                 ["$validation_errors"],
             );
             return;
@@ -162,14 +161,16 @@ prefix of C<'DLQ'>
 =cut
 
         try {
-            $controller->$sub_wrapped_code($ctx,$message,\%headers);
+            $controller->$sub_wrapped_code($ctx,$message,$ctx->stash->{headers});
         }
         catch ($e) {
-            $ctx->response->status(400);
+            $ctx->log->error("$e");
+            $ctx->response->status(500);
             $ctx->stash->{message} = $e;
-            $self->stuff_on_error_queue(
+            stuff_on_error_queue(
+                $self,
                 $ctx,'DLQ',
-                $ctx->response->status,
+                500,
                 ["$e"],
             );
         }
@@ -177,57 +178,6 @@ prefix of C<'DLQ'>
     };
 }
 
+sub _controller_roles { 'NAP::Messaging::Catalyst::Handle404::ConsumerRole' }
+
 =back
-
-=method C<stuff_on_error_queue>
-
-  $component->stuff_on_error_queue($ctx,$prefix,$status,$errors);
-
-Expects:
-
-=for :list
-* C<< $ctx->req->data >> to be the payload of the message causing the problem
-* C<< $ctx->stash->{headers} >> to be the headers of that same message
-* C<< $ctx->req->path >> to be a STOMP-ish destination
-* C<< $ctx->model('MessageQueue') >> to be have a C<send> method like L<Net::Stomp::Producer>
-
-It will then prepare a message with a payload like:
-
-  {
-    original_message => $ctx->req->data,
-    original_headers => $ctx->stash->{headers},
-    consumer => ref($component),
-    destination => $ctx->req->uri->as_string,
-    method => $ctx->req->method,
-    ( defined $errors ? ( errors => $errors ) : () ),
-    ( defined $status ? ( status => $status ) : () ),
-  }
-
-and it will send it to a queue called C<
-${prefix}.${original_destination} >. The message will have type C<
-error-${original_type} >.
-
-=cut
-
-sub stuff_on_error_queue {
-    my ($self,$ctx,$prefix,$status,$errors) = @_;
-
-    my $payload = {
-        original_message => $ctx->req->data,
-        original_headers => $ctx->stash->{headers},
-        consumer => ref($self),
-        destination => $ctx->req->uri->as_string,
-        method => $ctx->req->method,
-        ( defined $errors ? ( errors => $errors ) : () ),
-        ( defined $status ? ( status => $status ) : () ),
-    };
-    my $path = $ctx->req->path;$path=~s{^/+}{};
-    my $destination = "/queue/${prefix}.${path}";
-
-    $ctx->model('MessageQueue')->send(
-        $destination,
-        {
-            type => 'error-'.$ctx->stash->{headers}{type},
-        },
-        $payload);
-}

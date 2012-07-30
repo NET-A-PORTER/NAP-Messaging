@@ -42,6 +42,7 @@ __PACKAGE__->arguments([
           ConfigLoader
           ErrorCatcher
           StackTrace
+          +NAP::Messaging::Catalyst::LogTrapper
           +CatalystX::ComponentsFromConfig::ModelPlugin
   )
 ]);
@@ -65,6 +66,8 @@ before setup_components => sub {
     my ($class) = @_;
 
     $class->_set_class_name();
+    push @{$class->config->{setup_components}->{search_extra}},
+        'NAP::Messaging::Catalyst::Controller';
 };
 
 =item *

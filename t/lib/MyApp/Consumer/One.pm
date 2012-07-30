@@ -25,6 +25,9 @@ sub my_consume_method {
         count => $message->{count} + 1,
     });
 
+    warn "testing logtrapper"
+        if $self->_c->config->{logtrapper}{enable};
+
     $self->log->info("sent");
 
     return;
