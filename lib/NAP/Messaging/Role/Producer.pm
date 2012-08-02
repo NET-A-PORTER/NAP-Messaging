@@ -1,6 +1,7 @@
 package NAP::Messaging::Role::Producer;
 use NAP::policy 'role';
 use List::MoreUtils ();
+use Data::Visitor::Callback;
 
 # ABSTRACT: role to help write ActiveMQ producers
 
@@ -88,6 +89,42 @@ sub _config {
     return {}
 }
 
+=head2 C<preprocessor>
+
+A L<Data::Visitor::Callback> object, used to munge data returned by
+the C<transform> method.
+
+By default, it stringifies L<DateTime> objects with the format
+C<%Y-%m-%dT%H:%M:%S.%3N%z>
+
+=cut
+
+has preprocessor => (
+    isa         => 'Data::Visitor::Callback',
+    is          => 'rw',
+    builder     => '_build_preprocessor',
+    required    => 1,
+    lazy        => 1,
+    clearer     => 'reset_default_preprocessor',
+    handles     => {
+        'preprocess_data' => 'visit',
+    },
+);
+
+# request from Java for the format to be:
+# yyyy-MM-dd'T'HH:mm:ss.SSSZ
+sub _build_preprocessor {
+    return Data::Visitor::Callback->new({
+        'DateTime' => sub {
+            if ($_->formatter) {
+                return "$_";
+            }
+            # should be ISO8601
+            return $_->strftime("%Y-%m-%dT%H:%M:%S.%3N%z");
+        }
+    })
+}
+
 =head1 METHODS
 
 =head2 C<transform>
@@ -114,6 +151,8 @@ will call (more or less):
 
 The returned headers need not include a C<destination> or C<type>
 value, and the returned payloads needs not include a C<@type> value.
+
+The payloads are passed trough the L</preprocessor>.
 
 =cut
 
@@ -144,7 +183,9 @@ around 'transform' => sub {
 
         $header->{type} //= $self->type;
         # this will go away soon, I promise
-        $payload->{'@type'} //= $self->type;
+        $payload->{'@type'} //= $header->{type};
+
+        %$payload = %{$self->preprocess_data($payload)};
     }
 
     return @rets;
