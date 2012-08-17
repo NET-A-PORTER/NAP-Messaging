@@ -128,9 +128,7 @@ L<Plack::Handler::Stomp> for details)
 =item *
 
 the message payload is validated against the schema built above; if it
-fails, the error is logged, we call
-L<stuff_on_error_queue|NAP::Messaging::Catalyst::Utils/stuff_on_error_queue>
-with a prefix of C<'DLQ.failed-validation'>
+fails, the error is logged, we call L</handle_validation_failure>.
 
 =cut
 
@@ -140,12 +138,7 @@ with a prefix of C<'DLQ.failed-validation'>
         if (!$ok) {
             $ctx->log->error("$validation_errors");
             $ctx->response->status(400);
-            stuff_on_error_queue(
-                $self,
-                $ctx,'DLQ.failed-validation',
-                400,
-                ["$validation_errors"],
-            );
+            $self->handle_validation_failure($ctx,$validation_errors);
             return;
         }
 
@@ -155,8 +148,7 @@ if instead the message validates, we call the consume method (wrapped
 by C<_wrap_coderef>) passing C< $ctx, $message, \%headers >.
 
 The call is done in a C<try> block; if the method dies, we set the
-exception as a possible reply, and call C<stuff_on_error_queue> with a
-prefix of C<'DLQ'>
+exception as a possible reply, and call L</handle_processing_failure>.
 
 =cut
 
@@ -167,17 +159,52 @@ prefix of C<'DLQ'>
             $ctx->log->error("$e");
             $ctx->response->status(500);
             $ctx->stash->{message} = $e;
-            stuff_on_error_queue(
-                $self,
-                $ctx,'DLQ',
-                500,
-                ["$e"],
-            );
+            $self->handle_processing_failure($ctx,$e);
         }
         return;
     };
 }
 
-sub _controller_roles { 'NAP::Messaging::Catalyst::Handle404::ConsumerRole' }
-
 =back
+
+=head2 C<handle_validation_failure>
+
+Calls
+L<stuff_on_error_queue|NAP::Messaging::Catalyst::Utils/stuff_on_error_queue>
+with a prefix of C<'DLQ.failed-validation'>
+
+=cut
+
+sub handle_validation_failure {
+    my ($self,$ctx,$validation_errors) = @_;
+
+    stuff_on_error_queue(
+        $self,
+        $ctx,'DLQ.failed-validation',
+        400,
+        ["$validation_errors"],
+    );
+    return;
+}
+
+=head2 C<handle_processing_failure>
+
+Calls
+L<stuff_on_error_queue|NAP::Messaging::Catalyst::Utils/stuff_on_error_queue>
+with a prefix of C<'DLQ'>
+
+=cut
+
+sub handle_processing_failure {
+    my ($self,$ctx,$exception) = @_;
+
+    stuff_on_error_queue(
+        $self,
+        $ctx,'DLQ',
+        500,
+        ["$exception"],
+    );
+    return;
+}
+
+sub _controller_roles { 'NAP::Messaging::Catalyst::Handle404::ConsumerRole' }

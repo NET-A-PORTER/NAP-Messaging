@@ -152,6 +152,10 @@ will call (more or less):
 The returned headers need not include a C<destination> or C<type>
 value, and the returned payloads needs not include a C<@type> value.
 
+Any C<destination>, be it defaulted from the L</destination>
+attribute, or set by the C<transform> method, is mapped according to
+the C<routes_map> configuration, via the L</map_destination> method.
+
 The payloads are passed trough the L</preprocessor>.
 
 =cut
@@ -167,17 +171,9 @@ around 'transform' => sub {
     my $ret_it = List::MoreUtils::natatime 2,@rets;
 
     while (my ($header,$payload) = $ret_it->()) {
-        my $dest = $header->{destination} // $self->destination;
-
-        if (exists $conf->{routes_map}{$dest}) {
-            $dest = $conf->{routes_map}{$dest};
-        }
-
-        $dest =~ s{^/}{};
-        if ($dest !~ m{^(?:topic|queue)}) {
-            $dest = "queue/$dest";
-        }
-        $dest = "/$dest";
+        my $dest = $self->map_destination(
+            $header->{destination} // $self->destination
+        );
 
         $header->{destination} = $dest;
 
@@ -190,3 +186,46 @@ around 'transform' => sub {
 
     return @rets;
 };
+
+=method C<map_destination>
+
+  my $destination = $self->map_destination($something);
+
+Looks up C<$something> in the C<routes_map>, returns the corresponding
+value, cleaned up via L</cleanup_destination>.
+
+=cut
+
+sub map_destination {
+    my ($self,$destination) = @_;
+
+    my $conf = $self->_config;
+    if (exists $conf->{routes_map}{$destination}) {
+        $destination = $conf->{routes_map}{$destination};
+    }
+    return $self->cleanup_destination($destination);
+}
+
+=method C<cleanup_destination>
+
+  my $destination = $self->cleanup_destination($something);
+
+If C<$something> starts with C</topic> or C</queue>, you get it back
+unchanged. If it does not match C<^/?(?:topic|queue)>, it is prefixed
+with C</queue>. The returned value always starts with C</>.
+
+Please do not abuse this function: try to always set fully-qualified
+destination names in you configuration!
+
+=cut
+
+sub cleanup_destination {
+    my ($self,$destination) = @_;
+
+    $destination =~ s{^/}{};
+    if ($destination !~ m{^(?:topic|queue)}) {
+        $destination = "queue/$destination";
+    }
+    $destination = "/$destination";
+    return $destination;
+}

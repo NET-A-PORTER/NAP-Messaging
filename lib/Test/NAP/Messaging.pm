@@ -73,6 +73,33 @@ has trace_basedir => (
     coerce => 1,
 );
 
+=attr C<config_hash>
+
+The application configuration. Used to set up L</trace_basedir> if not
+passed in, and to pass the configuration to the L</producer>'s
+transformers.
+
+=cut
+
+has config_hash => (
+    is => 'ro',
+    isa => 'HashRef',
+    required => 0,
+    default => sub { { } },
+);
+
+around BUILDARGS => sub {
+    my $orig=shift;my $self=shift;
+    my $args = $self->$orig(@_);
+
+    if ($args->{config_hash} && !$args->{trace_basedir}) {
+        $args->{trace_basedir} = $args->{config_hash}
+            {'Model::MessageQueue'}{args}{trace_basedir};
+    }
+
+    return $args;
+};
+
 =attr C<frame_reader>
 
 An instance of L<Net::Stomp::MooseHelpers::ReadTrace>, using
@@ -132,7 +159,7 @@ sub _build_producer {
             persistent => 'true',
         },
         transformer_args => {
-            _global_config => {},
+            _global_config => $self->config_hash,
         },
     });
     Net::Stomp::MooseHelpers::TraceOnly->meta->apply($prod);
@@ -377,13 +404,7 @@ sub request {
 
 =head1 CONSTRUCTORS
 
-=head2 C<new>
-
-  my $tester = Test::NAP::Messaging->new({
-    trace_basedir => '/tmp/foo',
-  });
-
-The normal L<Moose> constructor.
+In decreasing order of usefulness:
 
 =head2 C<new_with_app>
 
@@ -406,12 +427,35 @@ whatever logging configuration you use normally won't affect your
 tests.
 
 Then, an instance of C<Test::NAP::Messaging> is created, using the
-same C<trace_basedir> as your application; the C<<
-->producer->transformer_args->{_global_config} >> is set to your
-application's C<< ->config >>.
+passing the application's C<< ->config >> as C<config_hash> (see
+below).
 
 Finally, this instance and the PSGI entry point for the application
 are returned.
+
+=head2 C<new> with C<config_hash>
+
+  my $tester = Test::NAP::Messaging->new({
+    config_hash => My::App->config,
+  });
+
+This will use the passed-in configuration to set C<trace_basedir>
+(from C<< config_hash->{'Model::MessageQueue'}{args}{trace_basedir}
+>>) and the C<< ->producer->transformer_args->{_global_config} >>. The
+latter ensumers that C<routes_map> in your producers / transformers
+will be honoured.
+
+=head2 C<new>
+
+  my $tester = Test::NAP::Messaging->new({
+    trace_basedir => '/tmp/foo',
+  });
+
+The normal L<Moose> constructor.
+
+In this case, any C<routes_map> in your producers / transformers will
+not be used, since the C<$tester> object knows nothing about the
+configuration.
 
 =cut
 
@@ -447,9 +491,8 @@ sub new_with_app {
 
     my $tester = $class->new({
         trace_basedir => $dump_dir,
+        config_hash => $app_class->config,
     });
-    $tester->producer->transformer_args->{_global_config} =
-        $app_class->config;
 
     my $entry_point;
     if ($app_class->can('psgi_app')) {

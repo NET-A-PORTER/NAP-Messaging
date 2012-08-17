@@ -11,3 +11,4 @@ META.yml
 *~
 /.build/
 /NAP-Messaging-*
+/t/tmp/amq_dump_dir/
