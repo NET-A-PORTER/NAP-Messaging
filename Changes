@@ -1,4 +1,15 @@
 {{$NEXT}}
+- failure handling is factored better, easier to change from
+  ::Consumer subclasses
+- new role to get to Catalyst's ->model method
+- ::Consumer components are loaded automatically (previously you had
+  to configure your Catalyst to do it)
+- destination mapping in producers / transformers is exposed via
+  methods, in case you need it (e.g. for JMSReplyTo header)
+- Test::NAP::Messaging now has a config_hash parameter, to pass an
+  application's config and get the right producer configuration
+
+1.2.0     2012-08-02 15:40:51 Europe/London
 - NAP::Messaging::Role::Producer has a preprocessor, by default it
   stringifies DateTime objects
 - test helpers, Test::Deep-style: napdate($datetime) and atleast($number)

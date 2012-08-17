@@ -67,7 +67,7 @@ before setup_components => sub {
 
     $class->_set_class_name();
     push @{$class->config->{setup_components}->{search_extra}},
-        'NAP::Messaging::Catalyst::Controller';
+        'NAP::Messaging::Catalyst::Controller','::Consumer';
 };
 
 =item *
