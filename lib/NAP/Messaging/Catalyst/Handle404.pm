@@ -17,13 +17,15 @@ Given a context and a string, puts a "404" message in a DLQ.
 
 sub handle404 {
     my ( $self, $ctx, $message ) = @_;
-    $ctx->log->warn(
-          q{not found: }
-        . $ctx->request->uri->path
-    );
     $ctx->response->status(404);
 
     $ctx->stash->{headers} = extract_jms_headers($ctx);
+
+    $ctx->log->warn(
+          q{unhandled message: }
+        . ($ctx->stash->{headers}{type} // '(untyped)')
+        . " on ".$ctx->request->uri->path
+    );
 
     stuff_on_error_queue(
         undef,

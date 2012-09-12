@@ -1,0 +1,518 @@
+# PODNAME: NAP::Messaging::Migration
+# ABSTRACT: notes on the differences between Net::ActiveMQ and NAP::Messaging
+
+=head1 INTRO
+
+=head2 Why a new set of libraries?
+
+C<Net::ActiveMQ> sort-of worked, but it was getting too big, and it
+did too many things, some of which we'd really like to
+change. C<NAP::Messaging> is a small set of adaptors on several CPAN
+distributions to implement our messaging policies and "traditions".
+
+=head2 How do I learn everything about C<NAP::Messaging>?
+
+http://stomp.github.com/ has all the docs about C<STOMP>. Then, you
+can start looking at L<Net::Stomp::Producer> (and
+L<Net::Stomp::MooseHelpers>) to see how producers / transformers
+work. L<Plack::Handler::Stomp> and L<Catalyst::ActionRole::JMS>
+implement the basic of consumers; L<CatalystX::ConsumesJMS> provides
+most the sugar we use for our C<::Consumer::>
+modules. L<CatalystX::ComponentsFromConfig> is used to instantiate
+L<Net::Stomp::Producer> as a Catalyst model from the configuration.
+
+Then, of course, you can read the various pieces of C<NAP::Messaging>:
+
+=over 4
+
+=item L<NAP::Messaging::Role::Producer>
+
+is used to write producers / transformers
+
+=item L<NAP::Messaging::Base::Consumer>
+
+is the base class for C<::Consumer::> modules
+
+=item L<NAP::Messaging::Validator>
+
+is the main message validation engine
+
+=item L<Test::NAP::Messaging>
+
+is the main testing library for producers and consumers
+
+=back
+
+=head1 Main differences from C<Net::ActiveMQ>
+
+=head2 Producers
+
+Instead of:
+
+  package NAP::MQ::ActiveMQ::Producer::Whatever;
+  use NAP::policy 'class';
+  with 'Net::ActiveMQ::Role::Producer';
+
+  sub message_spec { return $some_rx_spec }
+
+  sub transform {
+    my ($self,$header,$data) = @_;
+    munge($data);
+    $header->{JMSType} = $data->{'@type'} = $some_type;
+    $header->{destination} = $some_destination;
+    return ($header,$data);
+  }
+
+You should now write:
+
+  package My::App::Messaging::Producer::Whatever;
+  use NAP::policy 'class';
+  with 'NAP::Messaging::Role::Producer';
+
+  has '+type' => (default => $some_type);
+  has '+destination' => (default => $some_logical_destination);
+
+  sub message_spec { return { $some_type => $some_rx_spec } }
+
+  sub transform {
+    my ($self,$header,$data) = @_;
+    munge($data);
+    return ($header,$data);
+  }
+
+and in the configuration:
+
+  <Producer::Whatever>
+   <routes_map>
+    $some_logical_destination  $some_destination
+   </routes_map>
+  </Producer::Whatever>
+
+In detail:
+
+=over 4
+
+=item *
+
+message type and destination are now attributes of the class, and are
+set automatically by the role
+
+=item *
+
+you can still override them in your C<transform> method, in case you
+need to perform more complicated transformations; please, use C<type>
+and not C<JMSType>
+
+=item *
+
+destinations can be rewritten via the configuration; please use this:
+put logical destination names in your producer classes, and put the
+actual destination (fully qualified, i.e. it has to start with
+C</queue/> or C</topic/>) in the configuration file
+
+=item *
+
+C<message_spec> can specify validation schema for multiple message
+types
+
+=back
+
+=head2 Sending messages
+
+Instead of:
+
+  $c->model('MessageQueue')->send('Producer::Whatever',$data);
+
+You should now write:
+
+  $c->model('MessageQueue')->transform_and_send(
+   'My::App::Messaging::Producer::Whatever',$data
+  );
+
+In detail:
+
+=over 4
+
+=item *
+
+the method you want is now called C<transform_and_send> to be more
+explicit in what it does
+
+=item *
+
+there is a C<send> method, but it is to be called like C<<
+->send($header,$body) >>: it performs no transformation of any kind,
+no destination rewriting, no validation, it just sends what you pass
+in (it will serialise the body)
+
+=item *
+
+the name of the producer / transformer class can no longer be
+abbreviated (making the abbreviation work was complicated and made
+sharing producers nearly impossible)
+
+=back
+
+If you don't have access to the Catalyst context object, the
+application should have a role or something to provide you with the
+correct instance of L<Net::Stomp::Producer>. Do I<not> instantiate it
+on your own: you'll get it wrong, it will not pick up the correct
+configuration (so for example destination mapping won't work), and it
+will be very hard to test. In Fulcrum, for example, you can do:
+
+  use XT::Central::Role::WithMessageFactory;
+
+and then either:
+
+  $self->msg_factory()
+
+or even:
+
+  XT::Central::Role::WithMessageFactory->msg_factory()
+
+to get the correct instance.
+
+=head2 Consumers
+
+Instead of:
+
+  package NAP::MQ::ActiveMQ::Consumer::Controller::Whatever;
+  use NAP::policy 'class';
+  BEGIN { extends 'Net::ActiveMQ::Consumer::ControllerBase::MessageDriven' }
+
+  __PACKAGE__->config(
+    action_namespace => 'some_queue'
+  );
+
+  sub some_type : Local {
+    my ($self, $c, $message) = @_;
+    do_something($message);
+  }
+
+and
+
+  package NAP::MQ::ActiveMQ::Consumer::Queue::Spec::Whatever;
+
+  sub some_type { return $a_schema }
+
+You should now write:
+
+  package My::App::Messaging::Consumer::Whatever;
+  use NAP::policy 'class';
+  extends 'NAP::Messaging::Base::Consumer';
+  require My::App::Spec::Whatever;
+
+  sub routes {
+    return {
+      $some_logical_destination => {
+        'some_type' => {
+           spec => My::App::Spec::Whatever->some_type,
+           code => \&some_type,
+        },
+      },
+    };
+  }
+
+  sub some_type {
+    my ($self, $message, $headers) = @_;
+    do_something($message);
+  }
+
+and
+
+  package My::App::Messaging::Spec::Whatever;
+
+  sub some_type { return $a_schema }
+
+and in the configuration:
+
+  <Consumer::Whatever>
+   <routes_map>
+    $some_logical_destination  $some_destination
+   </routes_map>
+  </Consumer::Whatever>
+
+In detail:
+
+=over 4
+
+=item *
+
+consumers are now under your application's namespace
+
+=item *
+
+there is no longer a 1-to-1 correspondence between consumer modules
+and destinations, message routing is now specified via the C<routes>
+sub
+
+=item *
+
+destinations can be rewritten via the configuration; please use this:
+put logical destination names in your consumer classes, and put the
+actual destination (fully qualified, i.e. it has to start with
+C</queue/> or C</topic/>) in the configuration file
+
+=item *
+
+you can group consumer subs into logical packages, specify the routes
+via code and config, and the appropriate controllers will get created
+and registered (see L<CatalystX::ConsumesJMS> and
+L<NAP::Messaging::Base::Consumer>).
+
+=item *
+
+message validation needs no longer be in a specially-named package:
+you just have to make sure that the C<spec> slot in the C<routes> gets
+the appropriate schema
+
+=item *
+
+the consumer sub gets the (de-serialised, validated) message body, and the headers; it does *not* get the Catalyst object
+
+=item *
+
+if you need access to Catalyst models, import
+L<NAP::Messaging::Role::WithModelAccess> and call C<<
+$self->model($whatever) >>
+
+=item *
+
+you get a logger, as C<< $self->log >>
+
+=back
+
+=head2 Main consumer application
+
+Instead of:
+
+  package NAP::MQ::ActiveMQ::Consumer;
+  use NAP::policy 'class';
+  use version; our $VERSION = '1.00';
+
+  $ENV{CATALYST_ENGINE}||='Stomp';
+
+  extends 'Net::ActiveMQ::ConsumerBaseApp';
+
+  __PACKAGE__->setup();
+
+You should now write:
+
+  package My::App::Messaging;
+  use NAP::policy 'class';
+  use version; our $VERSION = '1.00';
+  extends 'NAP::Messaging::Catalyst';
+
+  __PACKAGE__->setup();
+
+and the runner script is now just:
+
+  use NAP::policy;
+  use NAP::Messaging::Runner;
+
+  NAP::Messaging::Runner->new('My::App::Messaging')->run;
+
+In detail:
+
+=over 4
+
+=item *
+
+debug mode is turned on if C<< $ENV{CATALYST_DEBUG} ||
+$ENV{TEST_VERBOSE} >>, so you get useful output during testing
+
+=item *
+
+L<Catalyst::Plugin::ErrorCacther>, L<Catalyst::Plugin::StackTrace>,
+L<NAP::Messaging::Catalyst::LogTrapper> and
+L<CatalystX::ComponentsFromConfig::ModelPlugin> are loaded
+
+=item *
+
+log trapping (redirecting C<STDOUT> and C<STDERR> through the logger)
+is enabled via the configuration; we strongly suggest you do I<not>
+enable it for testing
+
+=item *
+
+logging is configured via L<Log::Log4perl::Catalyst> I<only if> you
+have a C<log4perl> entry in the configuration (which should point to
+another configuration file); you can pass additional options to the
+L<Log::Log4perl::Catalyst> constructor by setting C<log4perlopts> in
+the configuration
+
+=back
+
+=head2 C<Model::MessageQueue> configuration
+
+Instead of:
+
+ <Model::MessageQueue>
+  [% IF TEST_CONF %]
+    dump_dir t/var/mq
+    debug_level 1
+    hostname            DIAF
+    port                666
+ [% ELSE %]
+    hostname            localhost
+    port                61613
+ [% END %]
+ </Model::MessageQueue>
+
+You should write:
+
+ <Model::MessageQueue>
+  base_class NAP::Messaging::Catalyst::MessageQueueAdaptor
+  <args>
+   <servers>
+    hostname localhost
+    port     61613
+   </servers>
+   [% IF TEST_CONF %]
+   trace_basedir t/tmp/amq_dump_dir
+   trace 1
+   [% END %]
+  </args>
+  [% IF TEST_CONF %]
+  traits [ +Net::Stomp::MooseHelpers::TraceOnly ]
+  [% END %]
+ </Model::MessageQueue>
+
+In detail:
+
+=over 4
+
+=item *
+
+we use L<CatalystX::ComponentsFromConfig> to create the model object,
+with the help of L<NAP::Messaging::Catalyst::MessageQueueAdaptor>
+
+=item *
+
+tracing is enabled by adding a role and configuring it
+
+=item *
+
+the tracer will dump complete C<STOMP> frames, not just message bodies
+
+=item *
+
+you can enable "trace but also send" using
+L<Net::Stomp::MooseHelpers::TraceStomp>
+
+=back
+
+=head2 Testing
+
+Instead of:
+
+  use_ok 'CatalystX::Test::MessageDriven', 'NAP::MQ::ActiveMQ::Consumer';
+
+  my $res = request( '/queue_name/', to_json($payload) );
+
+You should now write:
+
+  my ($tester,$app) = Test::NAP::Messaging->new_with_app({
+    app_class => 'My::App::Messaging',
+    config_file => 't/conf',
+  })
+
+  my $res = $tester->request(
+    $app,
+    '/queue/queue_name/',
+    $payload,
+    { type => $message_type },
+ );
+
+In detail:
+
+=over 4
+
+=item *
+
+C<new_with_app> loads the application, configures it with the given
+configuration (it sets C<$ENV{CATALYST_CONFIG}>), and returns it as a
+PSGI coderef
+
+=item *
+
+it also makes sure that you're using a C<::TraceOnly> producer
+
+=item *
+
+the L<Test::NAP::Messaging> instance you get reads / writes to the
+same C<trace_basedir> as the application's producer
+
+=item *
+
+L<Test::NAP::Messaging> works like a L<Net::Stomp::Producer>, so you
+can call C<transform_and_send> on it
+
+=item *
+
+the C<request> method requires a fully qualified destination, a
+serialisable payload, and a hashref of headers I<including the type>
+
+=back
+
+Another way to instantiate L<Test::NAP::Messaging> is:
+
+ my $tester = Test::NAP::Messaging->new({
+   config_hash => My::App->config,
+ });
+
+which may be better if you just want to test the producers.
+
+To clear stored messages, you have to use the C<clear_destination>
+method: C<clear_queue> and C<clear_topic> no longer exist.
+
+C<message_matches> is gone: it was too confusing, it was often used
+the wrong way, and in quite a few cases it was not testing what it
+seemed to test. It's been replaced by
+L<assert_messages|Test::NAP::Messaging/assert_messages>.
+
+=cut
+
+=head2 The DLQ
+
+When a message is sent to the DLQ, either because it failed to
+validate, or because there was an exception while processing it, it
+will be wrapped in an error message. This message will have a type of
+C<error-$original_type> (so it's easy to see what type of message
+caused the error), and a body like:
+
+  {
+    original_message => $de_serialised_data_structure,
+    original_headers => $hashref,
+    consumer => $class_name,
+    destination => $original_destination,
+    errors => $something,
+    status => $http_like_status_code,
+  }
+
+(C<< ->{destination} >> should really have the same value as C<<
+->{original_headers}{destination} >>)
+
+=head1 Style / conventions / please do it this way
+
+=over 4
+
+=item *
+
+always use logical destination names in your producers / consumers
+
+=item *
+
+leave all actual destination names to the configuration files
+
+=item *
+
+if your producer needs to send to different destinations depending on
+the input, you still use logical names, then map each of them via the
+configuration
+
+=item *
+
+use a separate C<log4perl> configuration file for your consumer application
+
+=back

@@ -1,7 +1,7 @@
 package NAP::Messaging::Catalyst::MessageQueueAdaptor;
 use NAP::policy 'class';
 extends 'CatalystX::ComponentsFromConfig::ModelAdaptor';
-use JSON::XS;
+use NAP::Messaging::Serialiser;
 
 # ABSTRACT: base class we use for our MessageQueue model
 
@@ -42,19 +42,18 @@ or, for testing:
 We use this adapter to avoid writing nearly-empty model classes, and
 to make it easier to apply tracing roles.
 
-We default to JSON serialisation and persistent delivery. We pass the
-application's configuration to the transformers' ("producers")
-constructors to allow L<NAP::Messaging::Role::Producer> to map
-destinations via the config file.
+We use L<NAP::Messaging::Serialiser> for serialisation, and we default
+to persistent delivery. We pass the application's configuration to the
+transformers' ("producers") constructors to allow
+L<NAP::Messaging::Role::Producer> to map destinations via the config
+file.
 
 =cut
-
-my $json = JSON::XS->new->utf8;
 
 __PACKAGE__->config(
     class => 'Net::Stomp::Producer',
     args => {
-        serializer => sub { $json->encode($_[0]) },
+        serializer => sub { NAP::Messaging::Serialiser->serialise($_[0]) },
         default_headers => {
             'content-type' => 'json',
             persistent => 'true',

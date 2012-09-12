@@ -1,7 +1,9 @@
 package NAP::Messaging::Role::Producer;
 use NAP::policy 'role';
 use List::MoreUtils ();
+use NAP::Messaging::Validator;
 use Data::Visitor::Callback;
+use MooseX::ClassAttribute;
 
 # ABSTRACT: role to help write ActiveMQ producers
 
@@ -126,6 +128,85 @@ sub _build_preprocessor {
 }
 
 =head1 METHODS
+
+=head2 C<message_spec>
+
+This method can return either a hashref describing the message as
+specified in L<Data::Rx>, or a hashref with message types as keys, and
+L<Data::Rx> description as values:
+
+  sub message_spec { return { type => '//any' } }
+
+or
+
+  sub message_spec { return {
+    SomeType => { type => '//any' },
+    OtherType => { type => '//rec', ... } ,
+  } }
+
+If this method is not supplied, no validation will take place. If the
+second form is used, trying to produce a message of a type not listed
+will result in the validation failing.
+
+NOTE: C<message_spec> must be a constant method. If you try to have it
+return different values on different calls, the results are undefined.
+
+=cut
+
+class_has _message_validators => (
+    isa => 'HashRef',
+    is => 'ro',
+    default => sub {
+        my ($metaclass) = @_;
+        # MooseX::ClassAttribute calls the default coderefs on the
+        # metaclass; for normal attributes they're called on the
+        # object. Let's try to make it work either way
+        my $class = $metaclass->isa('Class::MOP::Package')
+            ? $metaclass->name : $metaclass;
+        my $specs= $class->can('message_spec')
+            ? $class->message_spec : { type => '//any' };
+        if ($specs->{type} && !ref($specs->{type})) {
+            # looks like a single spec, use it as a default
+            $specs = { '*' => $specs };
+        }
+        for my $spec (values %$specs) {
+            $spec=NAP::Messaging::Validator->build_validator($spec);
+        }
+        return $specs;
+    },
+);
+
+=head2 C<validate>
+
+This method is called by L<Net::Stomp::Producer> to validate the
+transformed message. It uses L</message_spec> to get the L<Data::Rx>
+validation objects. You don't need to think about this method.
+
+=cut
+
+sub validate {
+    my ($self,$headers,$body) = @_;
+
+    if ($body->{'@type'}) { # legacy!
+        require Storable;
+        $body = Storable::dclone($body);
+        delete $body->{'@type'};
+    }
+
+    my $validators = $self->_message_validators;
+    my $msg_type = $headers->{type} // $headers->{JMStype};
+    my $validator = $validators->{$msg_type} // $validators->{'*'};
+    if (!$validator) {
+        die NAP::Messaging::Exception::Validation->new({
+            source_class => ref($self),
+            data => $body,
+            error => "No validation defined for $msg_type",
+        });
+    }
+    my ($ok,$errs) = NAP::Messaging::Validator->validate($validator,$body);
+    return 1 if $ok;
+    die $errs;
+}
 
 =head2 C<transform>
 
