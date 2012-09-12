@@ -5,7 +5,7 @@ use Net::Stomp::Frame;
 use Plack::Handler::Stomp;
 use Test::Builder;
 use Test::Deep qw(cmp_details deep_diag ignore);
-use JSON::XS;
+use NAP::Messaging::Serialiser;
 use Data::Printer;
 use HTTP::Response;
 use HTTP::Message::PSGI;
@@ -169,28 +169,28 @@ sub _build_producer {
 
 =attr C<serializer>
 
-Coderef, defaults to L<JSON::XS/encode_json>. Used to serialise
-messages sent via the L</producer>.
+Coderef, defaults to L<NAP::Messaging::Serialiser/serialise>. Used to
+serialise messages sent via the L</producer>.
 
 =cut
 
 has serializer => (
     isa => 'CodeRef',
     is => 'ro',
-    default => sub { \&encode_json },
+    default => sub { sub { NAP::Messaging::Serialiser->serialise($_[0]) } }
 );
 
 =attr C<deserializer>
 
-Coderef, defaults to L<JSON::XS/decode_json>. Used to deserialise
-messages read via the L</frame_reader>.
+Coderef, defaults to L<NAP::Messaging::Serialiser/deserialise>. Used
+to deserialise messages read via the L</frame_reader>.
 
 =cut
 
 has deserializer => (
     isa => 'CodeRef',
     is => 'ro',
-    default => sub { \&decode_json },
+    default => sub { sub { NAP::Messaging::Serialiser->deserialise($_[0]) } }
 );
 
 has _tester => (

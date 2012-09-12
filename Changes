@@ -1,5 +1,11 @@
 {{$NEXT}}
 
+1.4.0     2012-09-12 16:27:46 Europe/London
+- add producer validation
+- serialisation is now completely handled inside NAP::Messaging::Serialiser
+- clearer log when receiving an unhandled message
+- documentation diagrams in the docs/ subdir, and ::Migration pod
+
 1.3.0     2012-08-17 16:40:37 Europe/London
 - failure handling is factored better, easier to change from
   ::Consumer subclasses
