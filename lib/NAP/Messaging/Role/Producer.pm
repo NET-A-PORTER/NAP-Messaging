@@ -156,25 +156,28 @@ return different values on different calls, the results are undefined.
 class_has _message_validators => (
     isa => 'HashRef',
     is => 'ro',
-    default => sub {
-        my ($metaclass) = @_;
-        # MooseX::ClassAttribute calls the default coderefs on the
-        # metaclass; for normal attributes they're called on the
-        # object. Let's try to make it work either way
-        my $class = $metaclass->isa('Class::MOP::Package')
-            ? $metaclass->name : $metaclass;
-        my $specs= $class->can('message_spec')
-            ? $class->message_spec : { type => '//any' };
-        if ($specs->{type} && !ref($specs->{type})) {
-            # looks like a single spec, use it as a default
-            $specs = { '*' => $specs };
-        }
-        for my $spec (values %$specs) {
-            $spec=NAP::Messaging::Validator->build_validator($spec);
-        }
-        return $specs;
-    },
+    lazy => 1,
+    builder => '_compile_validators',
 );
+
+sub _compile_validators {
+    my ($metaclass) = @_;
+    # MooseX::ClassAttribute calls the default coderefs on the
+    # metaclass; for normal attributes they're called on the
+    # object. Let's try to make it work either way
+    my $class = $metaclass->isa('Class::MOP::Package')
+        ? $metaclass->name : $metaclass;
+    my $specs= $class->can('message_spec')
+        ? $class->message_spec : { type => '//any' };
+    if ($specs->{type} && !ref($specs->{type})) {
+        # looks like a single spec, use it as a default
+        $specs = { '*' => $specs };
+    }
+    for my $spec (values %$specs) {
+        $spec=NAP::Messaging::Validator->build_validator($spec);
+    }
+    return $specs;
+}
 
 =head2 C<validate>
 
