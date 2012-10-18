@@ -1,9 +1,5 @@
 {{$NEXT}}
-- producer validation used to compile the specs at role-application
-  time, now it waits until first use; this helps in a few cases where
-  you need an instance to generate the full spec
-- added NAP::Messaging::Utils, currently only has 1 function,
-  object_message
+- allow a Producer to not have @type set automatically
 
 1.4.0     2012-09-12 16:27:46 Europe/London
 - add producer validation

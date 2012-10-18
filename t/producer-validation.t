@@ -7,7 +7,7 @@ package MyProducer {
     use NAP::policy 'class';
     with 'NAP::Messaging::Role::Producer';
 
-    our $calls = 0;
+    our $calls;
 
     sub message_spec {++$calls; +{
         type => '//rec',
@@ -28,7 +28,7 @@ my $tester = Test::NAP::Messaging->new({
     trace_basedir => 't/tmp/amq_dump_dir',
 });
 
-is($MyProducer::calls,0,'validator has not been precompiled');
+is($MyProducer::calls,1,'validator has been precompiled');
 
 my $e = exception {
     $tester->transform_and_send('MyProducer',
@@ -43,15 +43,6 @@ cmp_deeply($e,
                ),
            ),
            'validation failed as expected');
-
-is($MyProducer::calls,1,'validator has been compiled');
-
-$e = exception {
-    $tester->transform_and_send('MyProducer',
-                                {value=>1})
-};
-cmp_deeply($e,undef,
-           'validation passed');
 
 is($MyProducer::calls,1,'validator has not been re-compiled');
 

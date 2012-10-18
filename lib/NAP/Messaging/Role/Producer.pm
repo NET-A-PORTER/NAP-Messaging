@@ -27,10 +27,11 @@ use MooseX::ClassAttribute;
   }
 
 You should not need to set C<< $header->{destination} >>, C<<
-$header->{type} >>, or C<< $payload->{'@type} >>, this role will do it
-for you.
+$header->{type} >>, or C<< $payload->{'@type'} >>, this role will do
+it for you.
 
-NOTE: C<< $payload->{'@type} >> is a fossil, and will be removed soon.
+NOTE: C<< $payload->{'@type'} >> is a fossil, and will be removed
+soon.
 
 =head1 ATTRIBUTES
 
@@ -76,6 +77,20 @@ has type => (
     is => 'ro',
     isa => 'Str',
     required => 1,
+);
+
+=head2 C<set_at_type>
+
+For "backward compatibility", we default to set C<<
+$payload->{'@type'} >>. This attribute controls that behaviour: set it
+to a false value to I<not> set that field in the payload.
+
+=cut
+
+has set_at_type => (
+    is => 'ro',
+    isa => 'Bool',
+    default => 1,
 );
 
 sub _config {
@@ -156,28 +171,25 @@ return different values on different calls, the results are undefined.
 class_has _message_validators => (
     isa => 'HashRef',
     is => 'ro',
-    lazy => 1,
-    builder => '_compile_validators',
+    default => sub {
+        my ($metaclass) = @_;
+        # MooseX::ClassAttribute calls the default coderefs on the
+        # metaclass; for normal attributes they're called on the
+        # object. Let's try to make it work either way
+        my $class = $metaclass->isa('Class::MOP::Package')
+            ? $metaclass->name : $metaclass;
+        my $specs= $class->can('message_spec')
+            ? $class->message_spec : { type => '//any' };
+        if ($specs->{type} && !ref($specs->{type})) {
+            # looks like a single spec, use it as a default
+            $specs = { '*' => $specs };
+        }
+        for my $spec (values %$specs) {
+            $spec=NAP::Messaging::Validator->build_validator($spec);
+        }
+        return $specs;
+    },
 );
-
-sub _compile_validators {
-    my ($metaclass) = @_;
-    # MooseX::ClassAttribute calls the default coderefs on the
-    # metaclass; for normal attributes they're called on the
-    # object. Let's try to make it work either way
-    my $class = $metaclass->isa('Class::MOP::Package')
-        ? $metaclass->name : $metaclass;
-    my $specs= $class->can('message_spec')
-        ? $class->message_spec : { type => '//any' };
-    if ($specs->{type} && !ref($specs->{type})) {
-        # looks like a single spec, use it as a default
-        $specs = { '*' => $specs };
-    }
-    for my $spec (values %$specs) {
-        $spec=NAP::Messaging::Validator->build_validator($spec);
-    }
-    return $specs;
-}
 
 =head2 C<validate>
 
@@ -262,8 +274,10 @@ around 'transform' => sub {
         $header->{destination} = $dest;
 
         $header->{type} //= $self->type;
-        # this will go away soon, I promise
-        $payload->{'@type'} //= $header->{type};
+        if ($self->set_at_type) {
+            # this will go away soon, I promise
+            $payload->{'@type'} //= $header->{type};
+        }
 
         %$payload = %{$self->preprocess_data($payload)};
     }
