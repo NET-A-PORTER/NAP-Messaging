@@ -37,31 +37,21 @@ soon.
 
 =cut
 
-has _global_config => (
-    is => 'rw',
-    isa => 'HashRef',
-    default => sub { { } },
-);
-
 =head2 C<destination>
 
 The name of an ActiveMQ destination to send messages to; can be
-altered via configuration:
+altered via L</routes_map>.
 
-  <Producer::SomeType>
-    <routes_map>
-      SomeDestination  /queue/an_actual_queue
-    </routes_map>
-  </Producer::SomeType>
-
-You must set this as shown in the synopsis.
+You can set this as show in the synopsis, or via the configuration, or
+even leave it unset. If you do not provide a value for this attribute,
+your L</transform> method I<must> assign a value to the C<destination>
+slot in the header.
 
 =cut
 
 has destination => (
     is => 'ro',
     isa => 'Str',
-    required => 1,
 );
 
 =head2 C<type>
@@ -79,6 +69,25 @@ has type => (
     required => 1,
 );
 
+=head2 C<routes_map>
+
+Dictionary to map logical destination names to actual
+destinations. Usually set in the configuration:
+
+  <Producer::SomeType>
+    <routes_map>
+      SomeDestination  /queue/an_actual_queue
+    </routes_map>
+  </Producer::SomeType>
+
+=cut
+
+has routes_map => (
+    is => 'ro',
+    isa => 'HashRef[Str]',
+    default => sub { +{} },
+);
+
 =head2 C<set_at_type>
 
 For "backward compatibility", we default to set C<<
@@ -94,17 +103,24 @@ has set_at_type => (
 );
 
 sub _config {
-    my ($self) = @_;
+    my ($self,$global_config) = @_;
 
     my $class = ref($self) || $self;
 
     $class =~ s{^.*?::(?=Producer::)}{};
 
-    if (exists $self->_global_config->{$class}) {
-        return $self->_global_config->{$class};
+    if (exists $global_config->{$class}) {
+        return $global_config->{$class};
     }
     return {}
 }
+
+around BUILDARGS => sub {
+    my ($orig,$self,@args) = @_;
+    my $args = $self->$orig(@args);
+    my $config = $self->_config(delete $args->{_global_config});
+    return { %$config,%$args };
+};
 
 =head2 C<preprocessor>
 
@@ -171,25 +187,28 @@ return different values on different calls, the results are undefined.
 class_has _message_validators => (
     isa => 'HashRef',
     is => 'ro',
-    default => sub {
-        my ($metaclass) = @_;
-        # MooseX::ClassAttribute calls the default coderefs on the
-        # metaclass; for normal attributes they're called on the
-        # object. Let's try to make it work either way
-        my $class = $metaclass->isa('Class::MOP::Package')
-            ? $metaclass->name : $metaclass;
-        my $specs= $class->can('message_spec')
-            ? $class->message_spec : { type => '//any' };
-        if ($specs->{type} && !ref($specs->{type})) {
-            # looks like a single spec, use it as a default
-            $specs = { '*' => $specs };
-        }
-        for my $spec (values %$specs) {
-            $spec=NAP::Messaging::Validator->build_validator($spec);
-        }
-        return $specs;
-    },
+    lazy => 1,
+    builder => '_compile_validators',
 );
+
+sub _compile_validators {
+    my ($metaclass) = @_;
+    # MooseX::ClassAttribute calls the default coderefs on the
+    # metaclass; for normal attributes they're called on the
+    # object. Let's try to make it work either way
+    my $class = $metaclass->isa('Class::MOP::Package')
+        ? $metaclass->name : $metaclass;
+    my $specs= $class->can('message_spec')
+        ? $class->message_spec : { type => '//any' };
+    if ($specs->{type} && !ref($specs->{type})) {
+        # looks like a single spec, use it as a default
+        $specs = { '*' => $specs };
+    }
+    for my $spec (values %$specs) {
+        $spec=NAP::Messaging::Validator->build_validator($spec);
+    }
+    return $specs;
+}
 
 =head2 C<validate>
 
@@ -250,7 +269,11 @@ value, and the returned payloads needs not include a C<@type> value.
 
 Any C<destination>, be it defaulted from the L</destination>
 attribute, or set by the C<transform> method, is mapped according to
-the C<routes_map> configuration, via the L</map_destination> method.
+the L</routes_map> attribute, via the L</map_destination> method.
+
+Keep in mind that, if you did not provide a value for the
+L</destination> attribute, and your C<transform> method does not set
+the destination in the header, an exception will be thrown.
 
 The payloads are passed trough the L</preprocessor>.
 
@@ -267,11 +290,33 @@ around 'transform' => sub {
     my $ret_it = List::MoreUtils::natatime 2,@rets;
 
     while (my ($header,$payload) = $ret_it->()) {
-        my $dest = $self->map_destination(
-            $header->{destination} // $self->destination
-        );
+        my $dest = $header->{destination} // $self->destination;
 
-        $header->{destination} = $dest;
+        if (!defined $dest) {
+            Net::Stomp::Producer::Exceptions::Invalid->throw({
+                transformer => ref($self),
+                previous_exception => 'no previous exception',
+                message_header => $header,
+                message_body => $payload,
+                reason => 'no destination defined, neither in the header nor in the producer/transformer attribute',
+            });
+        }
+
+        $header->{destination} = $self->map_destination($dest);
+
+        if ($header->{JMSType} && !$header->{type}) {
+            warn qq{$self set "JMSType" in the header. Please don't, and use "type".\n};
+            $header->{type} = delete $header->{JMSType};
+        }
+        if ($header->{JMSType} && $header->{type}) {
+            if ($header->{JMSType} eq $header->{type}) {
+                warn qq{$self set both "JMSType" and "type" in the header, to the same value. Please use only "type".\n};
+                delete $header->{JMSType};
+            }
+            else {
+                die qq{$self set both "JMSType" and "type" in the header, with different values. I give up\n};
+}
+        }
 
         $header->{type} //= $self->type;
         if ($self->set_at_type) {
@@ -289,7 +334,7 @@ around 'transform' => sub {
 
   my $destination = $self->map_destination($something);
 
-Looks up C<$something> in the C<routes_map>, returns the corresponding
+Looks up C<$something> in the L</routes_map>, returns the corresponding
 value, cleaned up via L</cleanup_destination>.
 
 =cut
@@ -298,8 +343,8 @@ sub map_destination {
     my ($self,$destination) = @_;
 
     my $conf = $self->_config;
-    if (exists $conf->{routes_map}{$destination}) {
-        $destination = $conf->{routes_map}{$destination};
+    if (exists $self->routes_map->{$destination}) {
+        $destination = $self->routes_map->{$destination};
     }
     return $self->cleanup_destination($destination);
 }
