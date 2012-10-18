@@ -7,7 +7,6 @@ sub message_spec { +{
     required => { value => '//int'}
 } }
 
-has '+destination' => ( default => 'my_destination' );
 has '+type' => ( default => 'my_response' );
 
 sub transform {
