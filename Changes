@@ -1,5 +1,9 @@
 {{$NEXT}}
 
+1.5.2     2012-10-24 15:50:59 Europe/London
+- assert_messages without a destination ("search everywhere") is now
+  compatible with newer Net::Stomp::MooseHelpers
+
 1.5.1     2012-10-18 13:16:20 Europe/London
 - warning when setting JMSType in a "transform" method
 - the "destination" attribute for transformers is no longer required,

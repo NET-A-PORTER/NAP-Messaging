@@ -17,7 +17,7 @@
 \pgfpagesuselayout{resize to}[a4paper]
 
 \usepackage{tikz}
-\usetikzlibrary{arrows,decorations.pathmorphing,backgrounds,positioning,fit,shapes.geometric,shapes.symbols}
+\usetikzlibrary{arrows,decorations.pathmorphing,backgrounds,positioning,fit,shapes.geometric,shapes.symbols,shapes.multipart,topaths}
 \usepackage{pgf-umlsd}
 
 \large
@@ -26,6 +26,7 @@
 \tikzstyle{class}=[box,draw=blue,text=white,fill=cyan]
 \tikzstyle{role}=[box,draw=gray!70,text=black,fill=gray!80]
 \tikzstyle{package}=[box,draw=gray!70,text=black,fill=gray!80]
+\tikzstyle{class plus}=[box,rectangle split,rectangle split parts=2,rectangle split part align={center,left},draw=blue,text=white,rectangle split part fill={cyan,gray!60}]
 
 \tikzstyle{isa}=[-open triangle 60,thin]
 \tikzstyle{does}=[-open triangle 60,thin,dashed]
@@ -42,6 +43,7 @@
 
 \matrix[row sep=1em,column sep=2em] {
   \node [class,anchor=west] {ClassName} ; & \node {a class} ; \\
+  \node [class plus,rectangle split parts=3,anchor=west] {ClassName \nodepart{two} method() \nodepart{three} method() } ; & \node {a class, partial list of methods}; \\
   \node [role,anchor=west] {RoleName} ; & \node {a role} ; \\
   \node (a) [class] {A} ; \node (b) [class,right=of a] {B} ; \draw [isa] (a) -- (b) ; & \node {A is a B} ; \\
   \node (a) [class] {A} ; \node (b) [role,right=of a] {B} ; \draw [does] (a) -- (b) ; & \node {A does B} ; \\
@@ -123,17 +125,26 @@
 
 \node (magic-codegen) [cloud,draw,aspect=3,below=of cons] {magic code generation} ;
 
-\node (cc) [class,below=of magic-codegen] {AppC::Controller::\$dest} ;
-\node (ccjms) [class,right=of cc] {Catalyst::Controller::JMS} ;
-\node (carjms) [role,below right=of cc] {Catalyst::ActionRole::JMS} ;
-\node (cas) [class,below=of carjms] {Catalyst::Action::Serialize} ;
-\node (cads) [class,below=of cas] {Catalyst::Action::Deserialize} ;
+\node (cc) [class plus,rectangle split parts=4,below=of magic-codegen] {
+   AppC::Controller::\$dest
+   \nodepart{two} begin()
+   \nodepart{three} \$message()
+   \nodepart{four} end()
+} ;
+\node (nmjms) [class,right=of cc.one east] {NAP::Messaging::Catalyst::Controller::JMS} ;
+\node (ccjms) [class,right=of nmjms] {Catalyst::Controller::JMS} ;
+\node (cads) [class,below right=1em and 7em of cc.two east] {Catalyst::Action::Deserialize} ;
+\node (nmfail) [role,below right=5em and 7em of cc.two east] {NAP::Messaging::Catalyst::ActionRole::DeserialiseFailure} ;
+\node (carjms) [role,below right=7em and 7em of cc.three east] {Catalyst::ActionRole::JMS} ;
+\node (cas) [class,below right=9em and 7em of cc.four east] {Catalyst::Action::Serialize} ;
 
 \draw [has a] (appc) to [bend right=80] (cc) ;
-\draw [isa] (cc) -- (ccjms) ;
-\draw [uses] (cc) |- (carjms) ;
-\draw [uses] (cc) |- (cas) ;
-\draw [uses] (cc) |- (cads) ;
+\draw [isa] (cc.one east) -- (nmjms) ;
+\draw [isa] (nmjms) -- (ccjms) ;
+\draw [isa] (cc.two east) to[out=0,in=180] (cads) ;
+\draw [does] (cc.two east) to[out=0,in=180] (nmfail) ;
+\draw [does] (cc.three east) to[out=-45,in=180] (carjms) ;
+\draw [isa] (cc.four east) to[out=-45,in=180] (cas) ;
 
 \draw [magic arrow] (cons) -- (magic-codegen) ;
 \draw [magic arrow] (magic-codegen) -- (cc) ;

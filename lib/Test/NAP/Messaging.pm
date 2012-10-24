@@ -213,11 +213,11 @@ the order they were produced.
 =cut
 
 sub messages {
-    my ($self,$destination) = @_;
+    my $self=shift;
 
     my @ret;
 
-    for my $frame ($self->frame_reader->sorted_frames($destination)) {
+    for my $frame ($self->frame_reader->sorted_frames(@_)) {
         # ignore ACK, CONNECT, SUBSCRIBE and the like
         next unless $frame->command eq 'SEND'
             || $frame->command eq 'MESSAGE';
@@ -284,7 +284,7 @@ sub assert_messages {
     my @stacks;
 
     $test->subtest($comment, sub {
-        for my $frame ($self->messages($destination)) {
+        for my $frame ($self->messages($destination ? $destination : ())) {
             push @stacks,{};
 
             my ($fh,$fstackh) = cmp_details($frame->headers,$filter_header);

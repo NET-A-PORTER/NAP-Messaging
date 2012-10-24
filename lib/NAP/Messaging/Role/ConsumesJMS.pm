@@ -4,6 +4,7 @@ with 'CatalystX::ConsumesJMS';
 use NAP::Messaging::Validator;
 use NAP::Messaging::Catalyst::Utils qw(extract_jms_headers stuff_on_error_queue);
 require NAP::Messaging::Catalyst::Handle404;
+use Scalar::Util qw(openhandle);
 
 # ABSTRACT: role for NAP consumer base classes
 
@@ -97,6 +98,20 @@ Our C<_wrap_code> provides header munging and payload validation:
 
 =cut
 
+my $slurp_body = sub {
+   my ($body) = @_;
+   my $rbody;
+   if (openhandle $body) {
+       seek($body, 0, 0); # in case something has already read from it
+       while ( defined( my $line = <$body> ) ) {
+           $rbody .= $line;
+       }
+   } else {
+       $rbody = $body;
+   }
+   return $rbody;
+};
+
 sub _wrap_code {
     my ($self,$c,$destination_name,$msg_type,$route) = @_;
 
@@ -127,8 +142,27 @@ L<Plack::Handler::Stomp> for details)
 
 =item *
 
+if the message payload failed to de-serialise, the error is logged,
+and we call L</handle_validation_failure>.
+
+=cut
+
+        if (!defined $message) {
+            my $err = $ctx->stash->{deserialise_error};
+            $err ||= "the message had no deserialisable payload";
+
+            $ctx->log->error("$err");
+            $ctx->response->status(400);
+            my $body = $slurp_body->($ctx->request->body);
+            $ctx->request->data($body);
+            $self->handle_validation_failure($ctx,$err);
+            return;
+        }
+
+=item *
+
 the message payload is validated against the schema built above; if it
-fails, the error is logged, we call L</handle_validation_failure>.
+fails, the error is logged, and we call L</handle_validation_failure>.
 
 =cut
 
@@ -206,5 +240,23 @@ sub handle_processing_failure {
     );
     return;
 }
+
+=head2 C<_controller_base_classes>
+
+We set the base class to L<NAP::Messaging::Catalyst::Controller::JMS>,
+to catch de-serialsation failures in a way that allows us to send them
+to a DLQ.
+
+=cut
+
+sub _controller_base_classes { 'NAP::Messaging::Catalyst::Controller::JMS' }
+
+=head2 C<_controller_roles>
+
+We apply
+L<NAP::Messaging::Catalyst::Handle404::ConsumerRole|NAP::Messaging::Catalyst::Handle404>
+to throw unhandled messages to the DLQ.
+
+=cut
 
 sub _controller_roles { 'NAP::Messaging::Catalyst::Handle404::ConsumerRole' }
