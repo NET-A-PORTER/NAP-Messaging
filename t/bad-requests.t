@@ -7,10 +7,39 @@ my ($tester,$app_entry_point) = Test::NAP::Messaging->new_with_app({
     config_file => 't/lib/myapp.conf',
 });
 
+my $fail_dest='queue/DLQ.failed-validation.queue/the_actual_queue_name';
+
 $tester->clear_destination;
 
 MyApp->log->disable('error','warn')
     unless $ENV{TEST_VERBOSE};
+
+subtest 'malformed JSON' => sub {
+    my $response = $tester->request(
+        $app_entry_point,
+        'queue/the_actual_queue_name',
+        q<{"bad":'input'}>,
+        { type => 'my_message_type' },
+    );
+    is($response->code,400,'message was consumed, and status 400 returned');
+
+    $tester->assert_messages({
+        destination => $fail_dest,
+        filter_header => superhashof({type => 'error-my_message_type'}),
+        assert_count => 1,
+        assert_body => {
+            original_message => q<{"bad":'input'}>,
+            original_headers => superhashof({ type => 'my_message_type' }),
+            destination => '/queue/the_actual_queue_name',
+            consumer => 'MyApp::Consumer::One',
+            method => ignore(),
+            errors => [re(qr{\bmalformed JSON string\b})],
+            status => 400,
+        },
+    },'error is in DLQ');
+
+    $tester->clear_destination($fail_dest);
+};
 
 subtest 'malformed message' => sub {
     my $response = $tester->request(
@@ -22,7 +51,7 @@ subtest 'malformed message' => sub {
     is($response->code,400,'message was consumed, and status 400 returned');
 
     $tester->assert_messages({
-        destination => 'queue/DLQ.failed-validation.queue/the_actual_queue_name',
+        destination => $fail_dest,
         filter_header => superhashof({type => 'error-my_message_type'}),
         assert_count => 1,
         assert_body => {
