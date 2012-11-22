@@ -1,4 +1,8 @@
 {{$NEXT}}
+- expose tranform via Test::NAP::Messaging
+- untyped messages are now sent to the DLQ with type="error-unknown"
+
+1.5.2     2012-10-24 15:50:59 Europe/London
 - assert_messages without a destination ("search everywhere") is now
   compatible with newer Net::Stomp::MooseHelpers
 
