@@ -147,7 +147,7 @@ has producer => (
     is => 'ro',
     isa => 'Net::Stomp::Producer',
     lazy_build => 1,
-    handles => [qw(send transform_and_send)],
+    handles => [qw(send transform transform_and_send)],
 );
 
 sub _build_producer {

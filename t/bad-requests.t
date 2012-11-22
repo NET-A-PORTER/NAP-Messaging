@@ -141,4 +141,29 @@ subtest 'message of unknown type' => sub {
     },'error is in DLQ');
 };
 
+subtest 'message with no type' => sub {
+    my $response = $tester->request(
+        $app_entry_point,
+        'queue/the_actual_queue_name',
+        { },
+        { },
+    );
+    is($response->code,404,'message was consumed, and status 404 returned');
+
+    $tester->assert_messages({
+        destination => 'queue/DLQ.queue/the_actual_queue_name',
+        filter_header => superhashof({type => 'error-unknown'}),
+        assert_count => 1,
+        assert_body => {
+            original_message => { },
+            original_headers => ignore(),
+            destination => '/queue/the_actual_queue_name',
+            consumer => undef,
+            method => ignore(),
+            errors => [re(qr{^unknown message type\b})],
+            status => 404,
+        },
+    },'error is in DLQ');
+};
+
 done_testing();

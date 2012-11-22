@@ -74,7 +74,7 @@ sub stuff_on_error_queue {
     $ctx->model('MessageQueue')->send(
         $destination,
         {
-            type => 'error-'.$ctx->stash->{headers}{type},
+            type => 'error-'.($ctx->stash->{headers}{type}//'unknown'),
         },
         $payload);
 
