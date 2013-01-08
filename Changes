@@ -1,5 +1,9 @@
 {{$NEXT}}
 
+1.5.4     2013-01-08 16:18:44 Europe/London
+- assert_messages returns a boolean indicating whether the test passed
+- Test::NAP::Messaging::Helpers exports the 'atleast' comparator
+
 1.5.3     2012-11-22 14:29:25 Europe/London
 - expose tranform via Test::NAP::Messaging
 - untyped messages are now sent to the DLQ with type="error-unknown"
