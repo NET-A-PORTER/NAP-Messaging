@@ -1,8 +1,8 @@
 package Test::NAP::Messaging::Helpers {
 use NAP::policy 'exporter';
 use Sub::Exporter -setup => {
-    exports => [ 'napdate' ],
-    groups => [ default => [ 'napdate' ] ],
+    exports => [ 'napdate', 'atleast' ],
+    groups => [ default => [ 'napdate', 'atleast' ] ],
 };
 
 # ABSTRACT: helpers to test messages
@@ -115,6 +115,6 @@ package Test::NAP::Messaging::Helpers::AtLeast {
     }
     sub renderExp {
         my ($self) = @_;
-        return "$self->{date}";
+        return "$self->{min}";
     }
 }

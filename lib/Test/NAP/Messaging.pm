@@ -283,6 +283,8 @@ sub assert_messages {
 
     my @stacks;
 
+    my $failed=0;
+
     $test->subtest($comment, sub {
         for my $frame ($self->messages($destination ? $destination : ())) {
             push @stacks,{};
@@ -304,6 +306,7 @@ sub assert_messages {
                 $ah,
                 "message number $filtered headers assert"
             )) {
+                ++$failed;
                 my $diag = deep_diag($astackh);
                 $test->diag($diag);
                 $test->diag(p $frame->headers);
@@ -315,6 +318,7 @@ sub assert_messages {
                 $ab,
                 "message number $filtered body assert"
             )) {
+                ++$failed;
                 my $diag = deep_diag($astackb);
                 $test->diag($diag);
                 $test->diag(p $body);
@@ -324,11 +328,14 @@ sub assert_messages {
 
         my ($ac,$astackc) = cmp_details($filtered,$assert_count);
         unless ($test->ok($ac,"count assert")) {
+            ++$failed;
             my $diag = deep_diag($astackc);
             $test->diag($diag);
             $test->diag("\n".$self->_full_stack_dump(\@stacks));
         }
     });
+
+    return !$failed;
 }
 
 sub _full_stack_dump {
