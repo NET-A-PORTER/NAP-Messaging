@@ -43,4 +43,33 @@ subtest 'passing strings' => sub {
     },'reply was sent');
 };
 
+subtest 'passing strings with added random fields' => sub {
+    my $test=sub {
+        my ($method) = @_;
+        $tester->clear_destination('queue/string-reply');
+
+        my $response = $tester->$method(
+            $app_entry_point,
+            'queue/stringy',
+            { value => "\x{1F662}" },
+            { type => 'padded_message' },
+        );
+        ok($response->is_success,'message was consumed');
+
+        $tester->assert_messages({
+            destination => 'queue/string-reply',
+            filter_header => superhashof({type => 'string_response'}),
+            assert_count => 1,
+            assert_body => superhashof({ response => "\x{1F662}\x{1F603}" }),
+        },'reply was sent');
+    };
+
+    subtest 'base case' => sub {
+        $test->('request');
+    };
+    subtest 'added fields' => sub {
+        $test->('request_with_extra_fields');
+    };
+};
+
 done_testing();
