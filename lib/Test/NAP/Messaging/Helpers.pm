@@ -1,9 +1,11 @@
 package Test::NAP::Messaging::Helpers {
 use NAP::policy 'exporter';
 use Sub::Exporter -setup => {
-    exports => [ 'napdate', 'atleast' ],
+    exports => [ 'napdate', 'atleast', 'add_random_fields' ],
     groups => [ default => [ 'napdate', 'atleast' ] ],
 };
+use String::Random;
+use Storable ();
 
 # ABSTRACT: helpers to test messages
 
@@ -30,6 +32,28 @@ if it is C<< >= >> the parameter.
 =cut
 
 sub atleast { Test::NAP::Messaging::Helpers::AtLeast->new(@_) }
+
+=func C<add_random_fields>
+
+  my @hashes_with_random = add_random_fields($hash1,$hash2,...);
+
+Returns cloned copied of each argument, with 10 random fields added to
+each.
+
+=cut
+
+sub add_random_fields {
+    map {
+        my $slot=Storable::dclone($_);
+        my $gen=String::Random->new;
+        for my $field_counter (1..10) {
+            my $name=$gen->randregex('\d\W\w{5}');
+            my $value=$gen->randregex('\d{5}\w{5}');
+            $slot->{$name}=$value;
+        }
+        $slot
+    } @_
+}
 
 }
 

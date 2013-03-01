@@ -1,7 +1,7 @@
 package MyApp::Consumer::Two;
 use NAP::policy 'class';
 extends 'NAP::Messaging::Base::Consumer';
-use NAP::Messaging::Utils 'object_message';
+use NAP::Messaging::Utils 'object_message','ignore_extra_fields';
 
 sub routes {
     return {
@@ -11,6 +11,13 @@ sub routes {
                     type => '//rec',
                     required => { value => '//str'},
                 },
+                code => object_message(\&munge_the_string),
+            },
+            padded_message => {
+                spec => ignore_extra_fields({
+                    type => '//rec',
+                    required => { value => '//str' },
+                }),
                 code => object_message(\&munge_the_string),
             },
         },

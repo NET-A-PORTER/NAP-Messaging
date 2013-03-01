@@ -1,5 +1,12 @@
 {{$NEXT}}
 
+1.5.5     2013-03-01 16:28:39 Europe/London
+- NAP::Messaging::Utils::ignore_extra_fields{,_deep} to map a strict
+  Data::Rx schema into one that ignores unknown fields
+- Test::NAP::Messaging::request_with_extra_fields and
+  Test::NAP::Messaging::Helpers::add_random_fields to test the above
+  behaviour
+
 1.5.4     2013-01-08 16:18:44 Europe/London
 - assert_messages returns a boolean indicating whether the test passed
 - Test::NAP::Messaging::Helpers exports the 'atleast' comparator

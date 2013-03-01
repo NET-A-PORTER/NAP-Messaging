@@ -13,6 +13,7 @@ use Net::Stomp::Producer;
 use Net::Stomp::MooseHelpers::TraceOnly 1.002;
 use Path::Class;
 use MooseX::Types::Path::Class;
+use Test::NAP::Messaging::Helpers 'add_random_fields';
 
 # ABSTRACT: testing helper for NAP::Messaging applications
 
@@ -407,6 +408,29 @@ sub request {
     my $http_response = HTTP::Response->from_psgi($psgi_response);
 
     return $http_response;
+}
+
+=method C<request_with_extra_fields>
+
+  my $response = $tester->request_with_extra_fields(
+     $psgi_app,
+     $destination,
+     $message, $headers );
+
+If the C<$message> is not a hashref, this method just calls
+L</request>. If the C<$message> is a hashref, C</request> is called
+with the message modified through
+L<Test::NAP::Messaging::Helpers/add_random_fields>.
+
+=cut
+
+sub request_with_extra_fields {
+    my ($self,$app,$destination,$message,$headers) = @_;
+
+    if (ref($message) eq 'HASH') {
+        ($headers,$message) = add_random_fields($headers,$message);
+    }
+    $self->request($app,$destination,$message,$headers);
 }
 
 =head1 CONSTRUCTORS
