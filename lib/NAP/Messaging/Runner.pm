@@ -3,6 +3,7 @@ use NAP::policy 'class';
 use Plack::Handler::Stomp;
 use FindBin::libs;
 use MooseX::Types::LoadableClass qw/ LoadableClass /;
+use Moose::Util::TypeConstraints 'duck_type';
 
 # ABSTRACT: helper class to start applications
 
@@ -59,18 +60,36 @@ around BUILDARGS => sub {
 
 =attr C<handler>
 
-Instance of L<Plack::Handler::Stomp>, lazy-built. It will use the
-application's C<MessageQueue> model to get connection information,
-C<jms_destination> to get the subscriptions, and will delegate the
-handler's logging to the application's logger. Additional parameters
-to be passed to C<Plack::Handler::Stomp>'s constructor can be
-specified in the C<Stomp> section of the application's configuration.
+Instance of L<Plack::Handler::Stomp> (or similar classes),
+lazy-built. It will use the application's C<MessageQueue> model to get
+connection information, C<jms_destination> to get the subscriptions,
+and will delegate the handler's logging to the application's
+logger. Additionally, in the C<Stomp> section of the application's
+configuration, you can specify parameters to be passed to
+C<Plack::Handler::Stomp>'s constructor. You can also specify which
+class to use instead of C<Plack::Handler::Stomp> (as
+C<handler_class>), and traits / roles to apply to it
+(C<handler_traits>). For example:
+
+  <Stomp>
+   handler_traits [ Net::Stomp::MooseHelpers::TraceStomp ]
+   trace_basedir t/tmp/amq_dump_dir
+   trace 1
+   <connect_headers>
+    client-id myapp
+   </connect_headers>
+   <subscribe_headers>
+    activemq.exclusive false
+    activemq.prefetchSize 1
+   </subscribe_headers>
+  </Stomp>
 
 =cut
 
 has handler => (
     is => 'ro',
     lazy_build => 1,
+    isa => duck_type(['new','run']),
 );
 
 sub _build_handler {
@@ -86,8 +105,26 @@ sub _build_handler {
         destination => $_,
     } } $appclass->jms_destinations;
 
+    my $config = $appclass->config->{Stomp} // {};
+    my $handler_class = delete $config->{handler_class}
+        // 'Plack::Handler::Stomp';
+    my $handler_traits = delete $config->{handler_traits};
+
+    if ($handler_traits && @$handler_traits) {
+        # just in case someone gets confused with other
+        # class-specification conventions
+        s{^\+}{} for @$handler_traits;
+
+        my $meta = $self->meta->create_anon_class(
+            superclasses => [ $handler_class ],
+            roles        => $handler_traits,
+            cache        => 1,
+        );
+        $handler_class = $meta->name;
+    }
+
     # now we can build the handler
-    my $handler = Plack::Handler::Stomp->new({
+    my $handler = $handler_class->new({
         %{ $appclass->config->{Stomp} // {} },
         servers => $servers,
         subscriptions => \@subscriptions,

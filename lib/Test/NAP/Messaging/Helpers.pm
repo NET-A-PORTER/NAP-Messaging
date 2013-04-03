@@ -36,14 +36,15 @@ sub atleast { Test::NAP::Messaging::Helpers::AtLeast->new(@_) }
 =func C<add_random_fields>
 
   my @hashes_with_random = add_random_fields($hash1,$hash2,...);
+  my $hash_with_random = add_random_fields($hash1);
 
-Returns cloned copied of each argument, with 10 random fields added to
-each.
+Returns cloned copies of each argument, with 10 random fields added to
+each. In scalar context, only processes the first argument.
 
 =cut
 
 sub add_random_fields {
-    map {
+    my @ret = map {
         my $slot=Storable::dclone($_);
         my $gen=String::Random->new;
         for my $field_counter (1..10) {
@@ -52,7 +53,8 @@ sub add_random_fields {
             $slot->{$name}=$value;
         }
         $slot
-    } @_
+    } @_;
+    return wantarray ? @ret : $ret[0];
 }
 
 }

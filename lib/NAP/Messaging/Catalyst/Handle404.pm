@@ -1,5 +1,5 @@
 package NAP::Messaging::Catalyst::Handle404;
-use NAP::Messaging::Catalyst::Utils qw(extract_jms_headers stuff_on_error_queue);
+use NAP::Messaging::Catalyst::Utils qw(extract_jms_headers type_and_destination stuff_on_error_queue);
 
 # ABSTRACT: function and roles to put unknown messages into a DLQ
 
@@ -20,11 +20,10 @@ sub handle404 {
     $ctx->response->status(404);
 
     $ctx->stash->{headers} = extract_jms_headers($ctx);
+    my ($type,$destination) = type_and_destination($ctx);
 
     $ctx->log->warn(
-          q{unhandled message: }
-        . ($ctx->stash->{headers}{type} // '(untyped)')
-        . " on ".$ctx->request->uri->path
+        "unhandled message: $type on $destination"
     );
 
     stuff_on_error_queue(

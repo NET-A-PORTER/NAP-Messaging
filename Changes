@@ -1,4 +1,11 @@
 {{$NEXT}}
+- Test::NAP::Messaging::Helpers::add_random_fields now works in scalar
+  context
+- NAP::Messaging::Runner allows using custom handler classes and
+  traits; this is useful to apply Net::Stomp::MooseHelpers::TraceStomp
+  for debugging
+
+1.5.5     2013-03-01 16:28:39 Europe/London
 - NAP::Messaging::Utils::ignore_extra_fields{,_deep} to map a strict
   Data::Rx schema into one that ignores unknown fields
 - Test::NAP::Messaging::request_with_extra_fields and

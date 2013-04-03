@@ -1,7 +1,7 @@
 package NAP::Messaging::Catalyst::Utils;
 use NAP::policy 'exporter';
 use Sub::Exporter -setup => {
-    exports => [ qw(extract_jms_headers stuff_on_error_queue) ],
+    exports => [ qw(extract_jms_headers type_and_destination stuff_on_error_queue) ],
 };
 
 # ABSTRACT: some common utilities that don't fit in classes / roles
@@ -24,6 +24,33 @@ sub extract_jms_headers {
     my %headers = map { s/^jms\.//r, $psgi_env->{$_} }
         grep { /^jms\./ } keys %$psgi_env;
     return \%headers;
+}
+
+=func C<type_and_destination>
+
+  my ($type,$destination) = type_and_destination($ctx);
+
+NOTE: this function expects you have run:
+
+    $ctx->stash->{headers} = extract_jms_headers($ctx);
+
+at some point during the current request, before calling this
+function.
+
+Returns the message type and the destination, for the current request.
+
+=cut
+
+sub type_and_destination {
+    my ($ctx) = @_;
+
+    my $type = $ctx->stash->{headers}{type} //
+        $ctx->stash->{headers}{JMSType} //
+            '<unknown type>';
+    my $destination = $ctx->req->uri->path //
+        $ctx->stash->{headers}{destination} //
+            '<unknown destination>';
+    return ($type,$destination);
 }
 
 =func C<stuff_on_error_queue>
