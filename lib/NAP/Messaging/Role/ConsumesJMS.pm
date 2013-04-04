@@ -2,7 +2,7 @@ package NAP::Messaging::Role::ConsumesJMS;
 use NAP::policy 'role';
 with 'CatalystX::ConsumesJMS';
 use NAP::Messaging::Validator;
-use NAP::Messaging::Catalyst::Utils qw(extract_jms_headers stuff_on_error_queue);
+use NAP::Messaging::Catalyst::Utils qw(extract_jms_headers type_and_destination stuff_on_error_queue);
 require NAP::Messaging::Catalyst::Handle404;
 use Scalar::Util qw(openhandle);
 
@@ -139,6 +139,9 @@ L<Plack::Handler::Stomp> for details)
 =cut
 
         $ctx->stash->{headers} = extract_jms_headers($ctx);
+        my ($type,$destination) = type_and_destination($ctx);
+
+        my $error_prefix = "message of type $type on $destination";
 
 =item *
 
@@ -151,7 +154,7 @@ and we call L</handle_validation_failure>.
             my $err = $ctx->stash->{deserialise_error};
             $err ||= "the message had no deserialisable payload";
 
-            $ctx->log->error("$err");
+            $ctx->log->error("$error_prefix failed deserialisation: $err");
             $ctx->response->status(400);
             my $body = $slurp_body->($ctx->request->body);
             $ctx->request->data($body);
@@ -170,7 +173,7 @@ fails, the error is logged, and we call L</handle_validation_failure>.
         my ($ok,$validation_errors) = NAP::Messaging::Validator->validate(
             $validator,$message);
         if (!$ok) {
-            $ctx->log->error("$validation_errors");
+            $ctx->log->error("$error_prefix failed validation: $validation_errors");
             $ctx->response->status(400);
             $self->handle_validation_failure($ctx,$validation_errors);
             return;
@@ -181,8 +184,9 @@ fails, the error is logged, and we call L</handle_validation_failure>.
 if instead the message validates, we call the consume method (wrapped
 by C<_wrap_coderef>) passing C< $ctx, $message, \%headers >.
 
-The call is done in a C<try> block; if the method dies, we set the
-exception as a possible reply, and call L</handle_processing_failure>.
+The call is done in a C<try> block; if the method dies, the error is
+logged, we set the exception as a possible reply, and call
+L</handle_processing_failure>.
 
 =cut
 
@@ -190,7 +194,7 @@ exception as a possible reply, and call L</handle_processing_failure>.
             $controller->$sub_wrapped_code($ctx,$message,$ctx->stash->{headers});
         }
         catch ($e) {
-            $ctx->log->error("$e");
+            $ctx->log->error("$error_prefix failed processing: $e");
             $ctx->response->status(500);
             $ctx->stash->{message} = $e;
             $self->handle_processing_failure($ctx,$e);
