@@ -1,5 +1,12 @@
 {{$NEXT}}
 
+1.6.0     2013-07-18 15:23:17 Europe/London
+- document NAP::Messaging::Catalyst::LogTrapper
+- NAP::Messaging::MultiRunner, to start and supervise multiple
+  identical consumer processes
+- NAP::Messaging::MultiRunner::Partitioned, to have sets of children
+  only consume from a subset of subscribed destinations
+
 1.5.6     2013-04-04 14:30:53 Europe/London
 - Test::NAP::Messaging::Helpers::add_random_fields now works in scalar
   context

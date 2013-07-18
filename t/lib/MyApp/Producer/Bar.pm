@@ -1,5 +1,5 @@
 package MyApp::Producer::Bar;
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 with 'NAP::Messaging::Role::Producer';
 
 sub message_spec { +{

@@ -1,5 +1,5 @@
 package NAP::Messaging::Catalyst::MessageQueueAdaptor;
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 extends 'CatalystX::ComponentsFromConfig::ModelAdaptor';
 use NAP::Messaging::Serialiser;
 

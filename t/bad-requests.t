@@ -1,5 +1,5 @@
 #!perl
-use NAP::policy 'test';
+use NAP::policy 'test','tt';
 use Test::NAP::Messaging;
 
 my ($tester,$app_entry_point) = Test::NAP::Messaging->new_with_app({

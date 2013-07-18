@@ -1,5 +1,5 @@
 package NAP::Messaging::Catalyst::Controller::Root;
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 require NAP::Messaging::Catalyst::Handle404;
 BEGIN { extends 'Catalyst::Controller::JMS' }
 

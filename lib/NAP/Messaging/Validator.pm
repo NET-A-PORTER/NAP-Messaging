@@ -1,5 +1,5 @@
 package NAP::Messaging::Validator;
-use NAP::policy;
+use NAP::policy 'tt';
 use Scalar::Util 'blessed';
 use List::MoreUtils 'uniq';
 use NAP::Messaging::Exception::Validation;
@@ -112,17 +112,19 @@ sub validate {
     try {
         $validator->validate($data);
     }
-    catch (Data::Rx::Failure $e) {
-        my $exc = NAP::Messaging::Exception::Validation->new({
-            source_class => $class,
-            data => $data,
-            error => $e,
-        });
-        $validation_errors = $exc->rx_failure_reason;
-    }
-    catch ($e) {
-        $validation_errors = $e;
-    }
+    catch {
+        when (match_instance_of('Data::Rx::Failure')) {
+            my $exc = NAP::Messaging::Exception::Validation->new({
+                source_class => $class,
+                data => $data,
+                error => $_,
+            });
+            $validation_errors = $exc->rx_failure_reason;
+        }
+        default {
+            $validation_errors = $_;
+        }
+    };
 
     return 1 unless $validation_errors;
     return (0, $validation_errors);

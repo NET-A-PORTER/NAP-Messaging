@@ -1,5 +1,5 @@
 #!perl
-use NAP::policy 'test';
+use NAP::policy 'test','tt';
 use Test::Fatal;
 use Test::NAP::Messaging;
 

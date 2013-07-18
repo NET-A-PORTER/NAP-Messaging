@@ -1,5 +1,5 @@
 package NAP::Messaging::Role::WithResponse;
-use NAP::policy 'role';
+use NAP::policy 'role','tt';
 
 # ABSTRACT: have a response
 

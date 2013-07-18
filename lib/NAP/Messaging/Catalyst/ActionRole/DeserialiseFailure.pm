@@ -1,5 +1,5 @@
 package NAP::Messaging::Catalyst::ActionRole::DeserialiseFailure;
-use NAP::policy 'role';
+use NAP::policy 'role','tt';
 
 # ABSTRACT: Action Role to stash de-serialisation errors
 

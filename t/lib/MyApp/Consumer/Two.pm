@@ -1,5 +1,5 @@
 package MyApp::Consumer::Two;
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 extends 'NAP::Messaging::Base::Consumer';
 use NAP::Messaging::Utils 'object_message','ignore_extra_fields';
 

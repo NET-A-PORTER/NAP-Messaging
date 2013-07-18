@@ -1,5 +1,5 @@
 package NAP::Messaging::Catalyst::Utils;
-use NAP::policy 'exporter';
+use NAP::policy 'exporter','tt';
 use Sub::Exporter -setup => {
     exports => [ qw(extract_jms_headers type_and_destination stuff_on_error_queue) ],
 };

@@ -1,5 +1,5 @@
 package NAP::Messaging::Role::ConsumesJMS;
-use NAP::policy 'role';
+use NAP::policy 'role','tt';
 with 'CatalystX::ConsumesJMS';
 use NAP::Messaging::Validator;
 use NAP::Messaging::Catalyst::Utils qw(extract_jms_headers type_and_destination stuff_on_error_queue);
@@ -193,12 +193,12 @@ L</handle_processing_failure>.
         try {
             $controller->$sub_wrapped_code($ctx,$message,$ctx->stash->{headers});
         }
-        catch ($e) {
-            $ctx->log->error("$error_prefix failed processing: $e");
+        catch {
+            $ctx->log->error("$error_prefix failed processing: $_");
             $ctx->response->status(500);
-            $ctx->stash->{message} = $e;
-            $self->handle_processing_failure($ctx,$e);
-        }
+            $ctx->stash->{message} = $_;
+            $self->handle_processing_failure($ctx,$_);
+        };
         return;
     };
 }

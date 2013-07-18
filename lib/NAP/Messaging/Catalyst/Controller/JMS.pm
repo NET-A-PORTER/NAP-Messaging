@@ -1,5 +1,5 @@
 package NAP::Messaging::Catalyst::Controller::JMS;
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 
 # ABSTRACT: Controller base class for our messaging consumers
 

@@ -1,5 +1,5 @@
 package NAP::Messaging::Role::Component;
-use NAP::policy 'role';
+use NAP::policy 'role','tt';
 use Catalyst::Utils ();
 
 # ABSTRACT: instance-based Catalyst Component

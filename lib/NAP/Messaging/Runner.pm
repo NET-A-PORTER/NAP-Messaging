@@ -1,5 +1,5 @@
 package NAP::Messaging::Runner;
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 use Plack::Handler::Stomp;
 use FindBin::libs;
 use MooseX::Types::LoadableClass qw/ LoadableClass /;
@@ -62,11 +62,11 @@ around BUILDARGS => sub {
 
 Instance of L<Plack::Handler::Stomp> (or similar classes),
 lazy-built. It will use the application's C<MessageQueue> model to get
-connection information, C<jms_destination> to get the subscriptions,
-and will delegate the handler's logging to the application's
-logger. Additionally, in the C<Stomp> section of the application's
-configuration, you can specify parameters to be passed to
-C<Plack::Handler::Stomp>'s constructor. You can also specify which
+connection information, C<jms_destination> to get the subscriptions
+(via L</subscriptions>), and will delegate the handler's logging to
+the application's logger. Additionally, in the C<Stomp> section of the
+application's configuration, you can specify parameters to be passed
+to C<Plack::Handler::Stomp>'s constructor. You can also specify which
 class to use instead of C<Plack::Handler::Stomp> (as
 C<handler_class>), and traits / roles to apply to it
 (C<handler_traits>). For example:
@@ -83,6 +83,11 @@ C<handler_class>), and traits / roles to apply to it
     activemq.prefetchSize 1
    </subscribe_headers>
   </Stomp>
+
+B<NOTE>: C<client-id> is a bad idea if you plan to run multiple
+paralell instances off the same configuration (e.g. via
+L<NAP::Messaging::MultiRunner>): the broker will refuse all
+connections after the first.
 
 =cut
 
@@ -101,9 +106,7 @@ sub _build_handler {
     my $servers = $appclass->model('MessageQueue')
         ->servers;
 
-    my @subscriptions = map {; {
-        destination => $_,
-    } } $appclass->jms_destinations;
+    my @subscriptions = $self->subscriptions;
 
     my $config = $appclass->config->{Stomp} // {};
     my $handler_class = delete $config->{handler_class}
@@ -132,6 +135,23 @@ sub _build_handler {
     });
 
     return $handler;
+}
+
+=method C<subscriptions>
+
+Calls the L</appclass>'s C<jms_destinations> method, then converts
+that list into the format required by L<Plack::Handler::Stomp>'s
+C<subscriptions> attribute (i.e. C<< ( { destination => '/queue/some'
+}, { destination => '/queue/other' } ) >>)
+
+=cut
+
+sub subscriptions {
+    my ($self) = @_;
+
+    return map {; {
+        destination => $_,
+    } } $self->appclass->jms_destinations;
 }
 
 =method C<run>

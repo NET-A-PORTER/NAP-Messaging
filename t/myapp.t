@@ -1,5 +1,5 @@
 #!perl
-use NAP::policy 'test';
+use NAP::policy 'test','tt';
 use Test::NAP::Messaging;
 
 my ($tester,$app_entry_point) = Test::NAP::Messaging->new_with_app({
@@ -70,6 +70,26 @@ subtest 'passing strings with added random fields' => sub {
     subtest 'added fields' => sub {
         $test->('request_with_extra_fields');
     };
+};
+
+subtest '"deep" consumer package name' => sub {
+
+    $tester->clear_destination;
+
+    my $response = $tester->request(
+        $app_entry_point,
+        'queue/deep',
+        { count => 27 },
+        { type => 'my_message_type' },
+    );
+    ok($response->is_success,'message was consumed');
+
+    $tester->assert_messages({
+        destination => 'queue/the_actual_destination',
+        filter_header => superhashof({type => 'my_response'}),
+        assert_count => 1,
+        assert_body => superhashof({ value => 28 }),
+    },'reply was sent');
 };
 
 done_testing();

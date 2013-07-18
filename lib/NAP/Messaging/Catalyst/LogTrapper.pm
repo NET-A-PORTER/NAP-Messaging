@@ -1,7 +1,26 @@
 package NAP::Messaging::Catalyst::LogTrapper {
-use NAP::policy 'role';
+use NAP::policy 'role','tt';
 
 # ABSTRACT: Catalyst plugin to tie STDIN/STDERR to the logger
+
+=head1 SYNOPSIS
+
+Load this as a L<Catalyst> plugin:
+
+  use Catalyst '+NAP::Messaging::Catalyst::LogTrapper';
+
+and configure it:
+
+  <logtrapper>
+   enable 1
+  </logtrapper>
+
+Now, everything printed to C<STDOUT> and C<STDERR> I<via Perl> will
+get caught and routed through L<Log::Log4perl> as an C<INFO>-level
+message coming from the C<NAP::Messaging::Catalyst::LogTrapper::Tied>
+package.
+
+=cut
 
 after setup_finalize => sub {
     my ($c) = @_;
@@ -16,7 +35,7 @@ after setup_finalize => sub {
 };
 
 package NAP::Messaging::Catalyst::LogTrapper::Tied {
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 use Log::Log4perl ();
 
 has original_fh => (
