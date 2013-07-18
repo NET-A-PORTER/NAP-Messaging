@@ -1,5 +1,5 @@
 #!perl
-use NAP::policy 'test';
+use NAP::policy 'test','tt';
 use NAP::Messaging::Utils 'object_message','ignore_extra_fields','ignore_extra_fields_deep';
 
 subtest 'object_message' => sub {

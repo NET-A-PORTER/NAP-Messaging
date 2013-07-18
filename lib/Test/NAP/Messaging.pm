@@ -1,5 +1,5 @@
 package Test::NAP::Messaging;
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 use Net::Stomp::MooseHelpers::ReadTrace 1.002;
 use Net::Stomp::Frame;
 use Plack::Handler::Stomp;

@@ -1,5 +1,5 @@
 package NAP::Messaging::Base::Consumer;
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 use Moose::Meta::Class;
 
 # ABSTRACT: base class for NAP JMS consumers

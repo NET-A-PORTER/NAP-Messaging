@@ -1,5 +1,5 @@
 package NAP::Messaging::Exception::Validation;
-use NAP::policy 'class','overloads';
+use NAP::policy 'class','overloads','tt';
 use Moose::Util::TypeConstraints;
 use Data::Dump 'pp';
 use overload
@@ -13,17 +13,19 @@ use overload
     try {
         $schema->validate($data);
     }
-    catch (Data::Rx::Failure $e) {
-        my $exc = NAP::Messaging::Exception::Validation->new({
-            source_class => __PACKAGE__,
-            data => $data,
-            error => $e,
-        });
-        warn $exc->rx_failure_reason;
-    }
-    catch ($e) {
-        warn $e;
-    }
+    catch {
+	when (match_instance_of('Data::Rx::Failure')) {
+            my $exc = NAP::Messaging::Exception::Validation->new({
+                source_class => __PACKAGE__,
+                data => $data,
+                error => $_,
+            });
+            warn $exc->rx_failure_reason;
+        }
+        default {
+            warn $_;
+        }
+    };
 
 =head1 DESCRIPTION
 

@@ -1,4 +1,4 @@
-package MyApp::Consumer::One;
+package MyApp::Consumer::Deep::Foo;
 use NAP::policy 'class','tt';
 extends 'NAP::Messaging::Base::Consumer';
 
@@ -24,9 +24,6 @@ sub my_consume_method {
     $self->amq->transform_and_send('MyApp::Producer::Foo',{
         count => $message->{count} + 1,
     });
-
-    warn "testing logtrapper"
-        if $self->_c->config->{logtrapper}{enable};
 
     $self->log->info("sent");
 

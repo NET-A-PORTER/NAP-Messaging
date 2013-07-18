@@ -1,5 +1,5 @@
 package NAP::Messaging::DataRx::Types;
-use NAP::policy;
+use NAP::policy 'tt';
 use parent 'Data::Rx::TypeBundle';
 use Class::MOP;
 

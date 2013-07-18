@@ -1,5 +1,5 @@
 package NAP::Messaging::Role::WithLogger;
-use NAP::policy 'role';
+use NAP::policy 'role','tt';
 
 # ABSTRACT: access the logger
 

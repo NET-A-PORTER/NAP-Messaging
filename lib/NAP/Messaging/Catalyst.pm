@@ -1,12 +1,12 @@
 package NAP::Messaging::Catalyst;
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 
 # ABSTRACT: base application class for AMQ consumers
 
 =head1 SYNOPSIS
 
   package MyApp;
-  use NAP::Policy 'class';
+  use NAP::policy 'class';
   extends 'NAP::Messaging::Catalyst';
 
   __PACKAGE__->setup();
@@ -29,7 +29,8 @@ is set up in debug mode
 =item *
 
 a few plugins are loaded by default: C<ConfigLoader>, C<ErrorCatcher>,
-C<StackTrace>, and L<CatalystX::ComponentsFromConfig::ModelPlugin>.
+C<StackTrace>, L<NAP::Messaging::Catalyst::LogTrapper>, and
+L<CatalystX::ComponentsFromConfig::ModelPlugin>.
 
 =cut
 

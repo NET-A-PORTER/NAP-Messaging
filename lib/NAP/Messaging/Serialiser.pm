@@ -1,5 +1,5 @@
 package NAP::Messaging::Serialiser;
-use NAP::policy 'class';
+use NAP::policy 'class','tt';
 use MooseX::ClassAttribute;
 use Moose::Util::TypeConstraints;
 use JSON::XS;

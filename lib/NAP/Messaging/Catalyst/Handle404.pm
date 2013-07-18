@@ -37,7 +37,7 @@ sub handle404 {
 }
 
 package NAP::Messaging::Catalyst::Handle404::RootRole {
-    use NAP::policy 'role';
+    use NAP::policy 'role','tt';
     use MooseX::MethodAttributes::Role;
 
     sub default : Private {
@@ -50,7 +50,7 @@ package NAP::Messaging::Catalyst::Handle404::RootRole {
 }
 
 package NAP::Messaging::Catalyst::Handle404::ConsumerRole {
-    use NAP::policy 'role';
+    use NAP::policy 'role','tt';
     use MooseX::MethodAttributes::Role;
 
     sub default : Private {

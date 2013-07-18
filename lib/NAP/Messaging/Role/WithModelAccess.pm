@@ -1,5 +1,5 @@
 package NAP::Messaging::Role::WithModelAccess;
-use NAP::policy 'role';
+use NAP::policy 'role','tt';
 
 # ABSTRACT: access any Catalyst model
 

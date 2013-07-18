@@ -1,5 +1,5 @@
 package NAP::Messaging::Role::Producer;
-use NAP::policy 'role';
+use NAP::policy 'role','tt';
 use List::MoreUtils ();
 use NAP::Messaging::Validator;
 use Data::Visitor::Callback;

@@ -1,5 +1,5 @@
 package NAP::Messaging::Utils;
-use NAP::policy 'exporter';
+use NAP::policy 'exporter','tt';
 use Sub::Exporter -setup => {
     exports => [ 'object_message',
                  'ignore_extra_fields',
