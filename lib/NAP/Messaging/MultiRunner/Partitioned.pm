@@ -159,13 +159,13 @@ around subscriptions => sub {
     my $limit_to = $self->limit_destinations_to;
     return @subs unless $limit_to;
     my %to_subscribe;
-    if (ref($limit_to)) {
-        @to_subscribe{@{$limit_to}}=();
-    }
-    else {
-        $to_subscribe{$limit_to}=undef;
-    }
-    return grep { exists $to_subscribe{$_->{destination}} } @subs;
+    @to_subscribe{
+        map { s{^/*}{/}r } (ref($limit_to) ? @{$limit_to} : $limit_to)
+    } = ();
+
+    return grep {
+        exists $to_subscribe{ $_->{destination} =~ s{^/*}{/}r }
+    } @subs;
 };
 
 =method C<remove_child>

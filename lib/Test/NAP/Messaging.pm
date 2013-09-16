@@ -506,9 +506,11 @@ sub new_with_app {
         $app_class->import();
     }
 
-    $app_class->log(Test::NAP::Messaging::CatalystLog->new);
-    $app_class->log->disable(qw/info debug/)
-        unless $ENV{TEST_VERBOSE};
+    for my $logger (qw(log timing_log)) {
+        $app_class->$logger(Test::NAP::Messaging::CatalystLog->new);
+        $app_class->$logger->disable(qw/info debug/)
+            unless $ENV{TEST_VERBOSE};
+    }
 
     croak "the MessageQueue model of $app_class does not have the 'trace_basedir' method, can't test (did you apply the Net::Stomp::MooseHelpers::TraceOnly role?)"
         unless $app_class->model('MessageQueue')->can('trace_basedir');
@@ -538,10 +540,14 @@ sub new_with_app {
 }
 
 package Test::NAP::Messaging::CatalystLog {
-    use NAP::policy 'class';
+    use NAP::policy 'class','test';
     extends 'Catalyst::Log';
     after _log => sub {
         $_[0]->_flush();
     };
+    sub _send_to_log {
+        my ($self,@logs) = @_;
+        note join '',@logs;
+    }
     __PACKAGE__->meta->make_immutable(inline_constructor=>0);
 }

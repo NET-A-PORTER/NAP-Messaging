@@ -5,6 +5,7 @@ use NAP::Messaging::Validator;
 use NAP::Messaging::Catalyst::Utils qw(extract_jms_headers type_and_destination stuff_on_error_queue);
 require NAP::Messaging::Catalyst::Handle404;
 use Scalar::Util qw(openhandle);
+use NAP::Messaging::Timing;
 
 # ABSTRACT: role for NAP consumer base classes
 
@@ -139,7 +140,13 @@ L<Plack::Handler::Stomp> for details)
 =cut
 
         $ctx->stash->{headers} = extract_jms_headers($ctx);
+        my $msg_id = $ctx->stash->{headers}{'message-id'}//'no-id';
         my ($type,$destination) = type_and_destination($ctx);
+
+        my $timing = NAP::Messaging::Timing->new({
+            logger => $ctx->timing_log,
+            details => [$type,$destination,$msg_id],
+        });
 
         my $error_prefix = "message of type $type on $destination";
 
@@ -159,6 +166,7 @@ and we call L</handle_validation_failure>.
             my $body = $slurp_body->($ctx->request->body);
             $ctx->request->data($body);
             $self->handle_validation_failure($ctx,$err);
+            $timing->stop('fail-deser');
             return;
         }
 
@@ -176,6 +184,7 @@ fails, the error is logged, and we call L</handle_validation_failure>.
             $ctx->log->error("$error_prefix failed validation: $validation_errors");
             $ctx->response->status(400);
             $self->handle_validation_failure($ctx,$validation_errors);
+            $timing->stop('fail-valid');
             return;
         }
 
@@ -192,12 +201,14 @@ L</handle_processing_failure>.
 
         try {
             $controller->$sub_wrapped_code($ctx,$message,$ctx->stash->{headers});
+            $timing->stop('success');
         }
         catch {
             $ctx->log->error("$error_prefix failed processing: $_");
             $ctx->response->status(500);
             $ctx->stash->{message} = $_;
             $self->handle_processing_failure($ctx,$_);
+            $timing->stop('fail-process');
         };
         return;
     };
