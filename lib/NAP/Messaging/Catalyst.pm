@@ -37,6 +37,8 @@ L<CatalystX::ComponentsFromConfig::ModelPlugin>.
 use Catalyst;
 use Log::Log4perl::Catalyst;
 
+__PACKAGE__->mk_classdata('timing_log');
+
 __PACKAGE__->arguments([
     ( $ENV{CATALYST_DEBUG} || $ENV{TEST_VERBOSE} ? '-Debug' : () ),
     qw(
@@ -63,6 +65,12 @@ sub _set_class_name { $app_class_name = shift }
 sub _application { $app_class_name }
 }
 
+=item *
+
+you application C<::Consumer::> namespace is loaded automatically
+
+=cut
+
 before setup_components => sub {
     my ($class) = @_;
 
@@ -82,18 +90,29 @@ instance replaces the default logger:
         %{$class->config->{log4perlopts} // {}},
     ));
 
+Of course this only happens if you have a C<log4perl> section in your
+configuration.
+
+In addition, a C<timing_log> is set up, that will always log as the
+category C<timing>.
+
 =cut
 
 before setup_finalize => sub {
     my ($class) = @_;
 
-    return unless $class->config->{log4perl};
+    if (not $class->config->{log4perl}) {
+        $class->timing_log($class->log);
+        return;
+    }
 
     $class->log->_flush() if $class->log->can('_flush');
     $class->log(Log::Log4perl::Catalyst->new(
         $class->config->{log4perl},
         %{$class->config->{log4perlopts} // {}},
     ));
+
+    $class->timing_log(Log::Log4perl->get_logger('timing'));
 };
 
 =back

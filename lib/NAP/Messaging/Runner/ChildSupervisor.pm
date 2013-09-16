@@ -200,14 +200,15 @@ sub fork_and_run {
         exit 1;
     }
     return $pid if $pid;
-    $0 .= ' ('.$self->name.')' if $self->name;
+    my $name = $self->name ? ' ('.$self->name.')' : '';
+    $0 .= $name;
 
     for my $signal (@{$self->trapped_signals}) {
         ## no critic RequireLocalizedPunctuationVars
         $SIG{$signal} = 'DEFAULT';
     }
 
-    $self->logger->info("Child runnnig as $$");
+    $self->logger->info("Child$name running as $$");
 
     $self->code->();
 }
@@ -226,6 +227,8 @@ sub stop_children {
     $signal //= 'TERM';
 
     $self->stopping(1);
+
+    return unless $self->children_count > 0;
 
     $self->logger->info(sprintf 'stopping all %s children',
                     $self->name)

@@ -1,5 +1,16 @@
 {{$NEXT}}
 
+1.6.1     2013-09-16 17:48:27 Europe/London
+- don't log "stopping children" if there are no children to stop
+- ignore leading slashes in destinations for the ::Partitioned
+  multi-runner
+- log (in category "timing") start/stop of message processing
+- expose the timing logger via $ctx->timing_log
+- provide simple timing facility via NAP::Messaging::Timing and
+  NAP::Messaging::Role::WithTiming
+- log the name of the child after forking
+- don't pretend we're free software
+
 1.6.0     2013-07-18 15:23:17 Europe/London
 - document NAP::Messaging::Catalyst::LogTrapper
 - NAP::Messaging::MultiRunner, to start and supervise multiple
