@@ -127,24 +127,8 @@ The script to run it:
 
   #!perl
   use NAP::policy;
-  use Plack::Handler::Stomp;
-  use MyApp qw();
-
-  my $servers = MyApp->model('MessageQueue')
-     ->servers;
-
-  my @subscriptions = map {; {
-      destination => $_,
-  } } MyApp->jms_destinations;
-
-  my $handler = Plack::Handler::Stomp->new({
-    %{ MyApp->config->{Stomp} // {} },
-    servers => $servers,
-    subscriptions => \@subscriptions,
-    logger => MyApp->log,
-  });
-
-  $handler->run(MyApp->psgi_app);
+  use NAP::Messaging::Runner;
+  NAP::Messaging::Runner->new('MyApp')->run;
 
 =head1 IN-DEPTH DOCS
 
@@ -155,3 +139,4 @@ The script to run it:
 * L<NAP::Messaging::Role::Producer> for the producer helper
 * L<NAP::Messaging::Validator> for incoming / outgoing message validation
 * L<Test::NAP::Messaging> for testing applications
+* L<NAP::Messaging::Runner> and its subclasses to start the application

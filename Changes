@@ -1,5 +1,9 @@
 {{$NEXT}}
 
+1.6.2     2013-10-17 09:54:21 Europe/London
+- now compatible with both Data::Rx 0.007 patched, and Data::Rx 0.2
+  official; see NAP::Messaging::DataRx::Compat for details
+
 1.6.1     2013-09-16 17:48:27 Europe/London
 - don't log "stopping children" if there are no children to stop
 - ignore leading slashes in destinations for the ::Partitioned

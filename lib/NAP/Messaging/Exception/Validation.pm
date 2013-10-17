@@ -14,7 +14,7 @@ use overload
         $schema->validate($data);
     }
     catch {
-	when (match_instance_of('Data::Rx::Failure')) {
+	when (match_instance_of('Data::Rx::FailureSet')) {
             my $exc = NAP::Messaging::Exception::Validation->new({
                 source_class => __PACKAGE__,
                 data => $data,
@@ -29,8 +29,9 @@ use overload
 
 =head1 DESCRIPTION
 
-Given a L<Data::Rx::Failure> object, extract the significant parts
-from it, and present them as a readable string.
+Given a L<Data::Rx::Failure> or L<Data::Rx::FailureSet> object,
+extract the significant parts from it, and present them as a readable
+string.
 
 =cut
 
@@ -118,7 +119,8 @@ sub is_rx_failure {
 
     local $@; # don't clobber the caller's $@, and use eval to avoid
               # checking 'blessed' or similar
-    return eval { $self->error->isa('Data::Rx::Failure') }
+    return eval { $self->error->isa('Data::Rx::FailureSet')
+              || $self->error->isa('Data::Rx::Failure') }
 }
 
 =method C<rx_failure_reason>
@@ -133,11 +135,27 @@ sub rx_failure_reason {
 
     return unless $self->is_rx_failure();
 
-    my $err = $self->error;
-    my $path = (join ', ',@{$err->path_to_value}) || 'top level';
-    my $message = $err->struct->[0]{message};
-    my $value = $err->struct->[0]{value};
+    my $exc = $self->error;my ($path,$message,$value);
+
+    if ($exc->isa('Data::Rx::FailureSet')) {
+        my $err = $self->error->failures->[0]; # just get the first one
+
+        $path = $err->data_string;
+        if ($path eq '$data') { $path = 'top level' }
+
+        $message = $err->struct->[0]{message};
+
+        $value = $err->value;
+    }
+    else {
+        my $err = $self->error;
+        $path = (join ', ',@{$err->path_to_value}) || 'top level';
+        $message = $err->struct->[0]{message};
+        $value = $err->struct->[0]{value};
+    }
 
     return sprintf 'Validation error at %s: %s; value was %s',
-        $path,$message,pp($value);
+        $path,
+        $message,
+        pp($value);
 }
