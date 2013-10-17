@@ -39,7 +39,7 @@ cmp_deeply($e,
                isa('Net::Stomp::Producer::Exceptions::Invalid'),
                methods(
                    reason => re(qr{\bvalidation\b}),
-                   previous_exception => re(qr{\bvalue is not a number\b}),
+                   previous_exception => re(qr{\bvalue is not (?:a number|an integer)\b}),
                ),
            ),
            'validation failed as expected');

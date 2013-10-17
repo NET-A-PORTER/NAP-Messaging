@@ -3,8 +3,8 @@ package NAP::Messaging::DataRx::Types::sku;
 use strict;
 use warnings;
 
-use Data::Rx::CoreType;
 use parent 'Data::Rx::CoreType';
+use NAP::Messaging::DataRx::Compat;
 
 # ABSTRACT: An RxType to validate a sku type.
 
@@ -22,7 +22,7 @@ sub type_uri {
 
 sub subname { 'sku' };
 
-sub validate {
+sub assert_valid {
     my ( $self, $value ) = @_;
     return 1 if $value =~ m{^\d+-\d{3,}$};
     $self->fail({
@@ -38,6 +38,6 @@ sub validate {
 
 type_uri
 subname
-validate
+assert_valid
 
 =end Pod::Coverage

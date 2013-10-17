@@ -4,8 +4,8 @@ use strict;
 use warnings;
 
 use DateTime::Format::ISO8601;
-use Data::Rx::CoreType;
 use parent 'Data::Rx::CoreType';
+use NAP::Messaging::DataRx::Compat;
 
 # ABSTRACT: A custom datetime type for Data::Rx
 
@@ -24,24 +24,7 @@ sub type_uri {
 
 sub subname { 'datetime' };
 
-# TODO: If we want we could add a restriction on the range here.
-
-=for example
-
-sub new_checker {
-  my ($class, $arg, $rx) = @_;
-
-  my $self = bless { } => $class;
-  return $self;
-
-  Carp::croak("unknown arguments to new")
-    unless Data::Rx::Util->_x_subset_keys_y($arg, { range => 1, value => 1});
-
-  return $self;
-}
-=cut
-
-sub validate {
+sub assert_valid {
     my ($self, $value) = @_;
 
     eval {
@@ -65,6 +48,6 @@ sub validate {
 
 type_uri
 subname
-validate
+assert_valid
 
 =end Pod::Coverage

@@ -3,8 +3,8 @@ package NAP::Messaging::DataRx::Types::bool;
 use strict;
 use warnings;
 
-use Data::Rx::CoreType;
 use parent 'Data::Rx::CoreType';
+use NAP::Messaging::DataRx::Compat;
 
 # ABSTRACT: A custom bool type that accepts '0' or '1' as boolean values.
 
@@ -22,7 +22,7 @@ sub type_uri {
 
 sub subname { 'bool' };
 
-sub validate {
+sub assert_valid {
     my ( $self, $value ) = @_;
     return 1 if $value =~ m{^\d$} and ($value == 0 or $value == 1);
     $self->fail({
@@ -38,6 +38,6 @@ sub validate {
 
 type_uri
 subname
-validate
+assert_valid
 
 =end Pod::Coverage

@@ -1,5 +1,5 @@
 package NAP::Messaging::Validator;
-use NAP::policy 'tt';
+use NAP::policy 'tt','match';
 use Scalar::Util 'blessed';
 use List::MoreUtils 'uniq';
 use NAP::Messaging::Exception::Validation;
@@ -104,16 +104,23 @@ sub validate {
     my ($class,$validator,$data) = @_;
 
     # just in case we get passed a hashref instead of a Data::Rx object
-    if (!(blessed($validator) && $validator->can('validate'))) {
+    if (!(blessed($validator) &&
+              ($validator->can('assert_valid') || $validator->can('validate'))
+          )) {
         $validator = $class->build_validator($validator);
     }
 
+    my $method = $validator->can('assert_valid') || $validator->can('validate');
+
     my $validation_errors;
     try {
-        $validator->validate($data);
+        $validator->$method($data);
     }
     catch {
-        when (match_instance_of('Data::Rx::Failure')) {
+        when (match_any(
+            match_instance_of('Data::Rx::FailureSet'),
+            match_instance_of('Data::Rx::Failure')
+        )) {
             my $exc = NAP::Messaging::Exception::Validation->new({
                 source_class => $class,
                 data => $data,
