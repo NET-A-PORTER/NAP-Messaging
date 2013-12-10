@@ -8,11 +8,11 @@ use NAP::Messaging::Timing;
 
 =head2 C<timing>
 
-  $self->timing(@details);
+  $self->timing(%details);
 
 Returns a L<NAP::Messaging::Timing> object tied to the correct logger,
-and with C<details> set to the list provided (preceded by the class
-name).
+and with C<details> set to the hash provided (the C<caller> key is set
+to the class name).
 
 =cut
 
@@ -23,6 +23,6 @@ sub timing {
 
     return NAP::Messaging::Timing->new({
         logger => $self->_c->timing_log,
-        details => [ref($self),@details],
+        details => [caller=>ref($self),@details],
     });
 }

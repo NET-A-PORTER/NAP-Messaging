@@ -91,6 +91,20 @@ the request headers (a hashref)
 
 requires '_wrap_coderef';
 
+=pod
+
+The subclass objects also gets a C<timer> object, an instance of
+L<NAP::Messaging::Timing>. You can freely set details on it. The timer
+is used to log how long it took to process the message.
+
+=cut
+
+has timer => (
+    is => 'ro',
+    writer => '_set_timer',
+    clearer => '_unset_timer',
+);
+
 =head1 Implementation Details
 
 Our C<_wrap_code> provides header munging and payload validation:
@@ -145,8 +159,17 @@ L<Plack::Handler::Stomp> for details)
 
         my $timing = NAP::Messaging::Timing->new({
             logger => $ctx->timing_log,
-            details => [$type,$destination,$msg_id],
+            details => [
+                component => ref($self),
+                message_type => $type,
+                message_destination => $destination,
+                message_id => $msg_id,
+            ],
         });
+        $self->_set_timer($timing);
+        Log::Log4perl::MDC->put(message_type=>$type);
+        Log::Log4perl::MDC->put(message_destination=>$destination);
+        Log::Log4perl::MDC->put(message_id=>$msg_id);
 
         my $error_prefix = "message of type $type on $destination";
 
@@ -166,7 +189,8 @@ and we call L</handle_validation_failure>.
             my $body = $slurp_body->($ctx->request->body);
             $ctx->request->data($body);
             $self->handle_validation_failure($ctx,$err);
-            $timing->stop('fail-deser');
+            $timing->stop(result=>'fail-deser');
+            $self->_unset_timer;
             return;
         }
 
@@ -184,7 +208,8 @@ fails, the error is logged, and we call L</handle_validation_failure>.
             $ctx->log->error("$error_prefix failed validation: $validation_errors");
             $ctx->response->status(400);
             $self->handle_validation_failure($ctx,$validation_errors);
-            $timing->stop('fail-valid');
+            $timing->stop(result=>'fail-valid');
+            $self->_unset_timer;
             return;
         }
 
@@ -201,15 +226,16 @@ L</handle_processing_failure>.
 
         try {
             $controller->$sub_wrapped_code($ctx,$message,$ctx->stash->{headers});
-            $timing->stop('success');
+            $timing->stop(result=>'success');
         }
         catch {
             $ctx->log->error("$error_prefix failed processing: $_");
             $ctx->response->status(500);
             $ctx->stash->{message} = $_;
             $self->handle_processing_failure($ctx,$_);
-            $timing->stop('fail-process');
+            $timing->stop(result=>'fail-process');
         };
+        $self->_unset_timer;
         return;
     };
 }
