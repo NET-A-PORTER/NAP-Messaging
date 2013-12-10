@@ -1,97 +1,104 @@
 {{$NEXT}}
 
+1.6.3     2013-12-10 13:01:24 Europe/London
+ - NAP::Messaging::Role::Producer can now map to multiple destinations
+   and types, just like CatalystX::ConsumesJMS can
+ - NAP::Messaging::Timing now takes hashes
+ - NAP::Messaging::Role::ConsumesJMS logs message details in timing as
+   key=value pairs, and it also sets them as MDC
+
 1.6.2     2013-10-17 09:54:21 Europe/London
-- now compatible with both Data::Rx 0.007 patched, and Data::Rx 0.2
-  official; see NAP::Messaging::DataRx::Compat for details
+ - now compatible with both Data::Rx 0.007 patched, and Data::Rx 0.2
+   official; see NAP::Messaging::DataRx::Compat for details
 
 1.6.1     2013-09-16 17:48:27 Europe/London
-- don't log "stopping children" if there are no children to stop
-- ignore leading slashes in destinations for the ::Partitioned
-  multi-runner
-- log (in category "timing") start/stop of message processing
-- expose the timing logger via $ctx->timing_log
-- provide simple timing facility via NAP::Messaging::Timing and
-  NAP::Messaging::Role::WithTiming
-- log the name of the child after forking
-- don't pretend we're free software
+ - don't log "stopping children" if there are no children to stop
+ - ignore leading slashes in destinations for the ::Partitioned
+   multi-runner
+ - log (in category "timing") start/stop of message processing
+ - expose the timing logger via $ctx->timing_log
+ - provide simple timing facility via NAP::Messaging::Timing and
+   NAP::Messaging::Role::WithTiming
+ - log the name of the child after forking
+ - don't pretend we're free software
 
 1.6.0     2013-07-18 15:23:17 Europe/London
-- document NAP::Messaging::Catalyst::LogTrapper
-- NAP::Messaging::MultiRunner, to start and supervise multiple
-  identical consumer processes
-- NAP::Messaging::MultiRunner::Partitioned, to have sets of children
-  only consume from a subset of subscribed destinations
+ - document NAP::Messaging::Catalyst::LogTrapper
+ - NAP::Messaging::MultiRunner, to start and supervise multiple
+   identical consumer processes
+ - NAP::Messaging::MultiRunner::Partitioned, to have sets of children
+   only consume from a subset of subscribed destinations
 
 1.5.6     2013-04-04 14:30:53 Europe/London
-- Test::NAP::Messaging::Helpers::add_random_fields now works in scalar
-  context
-- NAP::Messaging::Runner allows using custom handler classes and
-  traits; this is useful to apply Net::Stomp::MooseHelpers::TraceStomp
-  for debugging
+ - Test::NAP::Messaging::Helpers::add_random_fields now works in scalar
+   context
+ - NAP::Messaging::Runner allows using custom handler classes and
+   traits; this is useful to apply Net::Stomp::MooseHelpers::TraceStomp
+   for debugging
 
 1.5.5     2013-03-01 16:28:39 Europe/London
-- NAP::Messaging::Utils::ignore_extra_fields{,_deep} to map a strict
-  Data::Rx schema into one that ignores unknown fields
-- Test::NAP::Messaging::request_with_extra_fields and
-  Test::NAP::Messaging::Helpers::add_random_fields to test the above
-  behaviour
+ - NAP::Messaging::Utils::ignore_extra_fields{,_deep} to map a strict
+   Data::Rx schema into one that ignores unknown fields
+ - Test::NAP::Messaging::request_with_extra_fields and
+   Test::NAP::Messaging::Helpers::add_random_fields to test the above
+   behaviour
 
 1.5.4     2013-01-08 16:18:44 Europe/London
-- assert_messages returns a boolean indicating whether the test passed
-- Test::NAP::Messaging::Helpers exports the 'atleast' comparator
+ - assert_messages returns a boolean indicating whether the test passed
+ - Test::NAP::Messaging::Helpers exports the 'atleast' comparator
 
 1.5.3     2012-11-22 14:29:25 Europe/London
-- expose tranform via Test::NAP::Messaging
-- untyped messages are now sent to the DLQ with type="error-unknown"
+ - expose tranform via Test::NAP::Messaging
+ - untyped messages are now sent to the DLQ with type="error-unknown"
 
 1.5.2     2012-10-24 15:50:59 Europe/London
-- assert_messages without a destination ("search everywhere") is now
-  compatible with newer Net::Stomp::MooseHelpers
+ - assert_messages without a destination ("search everywhere") is now
+   compatible with newer Net::Stomp::MooseHelpers
 
 1.5.1     2012-10-18 13:16:20 Europe/London
-- warning when setting JMSType in a "transform" method
-- the "destination" attribute for transformers is no longer required,
-  as long as they set some value in the "destination" header
-- transformers get their configuration passed in to the constructor,
-  making things more uniform and simpler
+ - warning when setting JMSType in a "transform" method
+ - the "destination" attribute for transformers is no longer required,
+   as long as they set some value in the "destination" header
+ - transformers get their configuration passed in to the constructor,
+   making things more uniform and simpler
 
 1.5.0     2012-10-05 17:11:55 Europe/London
-- producer validation used to compile the specs at role-application
-  time, now it waits until first use; this helps in a few cases where
-  you need an instance to generate the full spec
-- added NAP::Messaging::Utils, currently only has 1 function,
-  object_message
+ - producer validation used to compile the specs at role-application
+   time, now it waits until first use; this helps in a few cases where
+   you need an instance to generate the full spec
+ - added NAP::Messaging::Utils, currently only has 1 function,
+   object_message
 
 1.4.1     2012-10-18 13:05:54 Europe/London
-- allow a Producer to not have @type set automatically
+ - allow a Producer to not have @type set automatically
 
 1.4.0     2012-09-12 16:27:46 Europe/London
-- add producer validation
-- serialisation is now completely handled inside NAP::Messaging::Serialiser
-- clearer log when receiving an unhandled message
-- documentation diagrams in the docs/ subdir, and ::Migration pod
+ - add producer validation
+ - serialisation is now completely handled inside NAP::Messaging::Serialiser
+ - clearer log when receiving an unhandled message
+ - documentation diagrams in the docs/ subdir, and ::Migration pod
 
 1.3.0     2012-08-17 16:40:37 Europe/London
-- failure handling is factored better, easier to change from
-  ::Consumer subclasses
-- new role to get to Catalyst's ->model method
-- ::Consumer components are loaded automatically (previously you had
-  to configure your Catalyst to do it)
-- destination mapping in producers / transformers is exposed via
-  methods, in case you need it (e.g. for JMSReplyTo header)
-- Test::NAP::Messaging now has a config_hash parameter, to pass an
-  application's config and get the right producer configuration
+ - failure handling is factored better, easier to change from
+   ::Consumer subclasses
+ - new role to get to Catalyst's ->model method
+ - ::Consumer components are loaded automatically (previously you had
+   to configure your Catalyst to do it)
+ - destination mapping in producers / transformers is exposed via
+   methods, in case you need it (e.g. for JMSReplyTo header)
+ - Test::NAP::Messaging now has a config_hash parameter, to pass an
+   application's config and get the right producer configuration
 
 1.2.0     2012-08-02 15:40:51 Europe/London
-- NAP::Messaging::Role::Producer has a preprocessor, by default it
-  stringifies DateTime objects
-- test helpers, Test::Deep-style: napdate($datetime) and atleast($number)
+ - NAP::Messaging::Role::Producer has a preprocessor, by default it
+   stringifies DateTime objects
+ - test helpers, Test::Deep-style: napdate($datetime) and atleast($number)
 
 1.1.0     2012-07-30 10:59:58 Europe/London
-- added LogTrapper, to tie STD{OUT,ERR} through the logger (defaults
-  to disabled)
-- unhandled messages (of unknown types, or delivered outside our
-  subscriptions) are sent to the proper DLQ, instead of ignored
+ - added LogTrapper, to tie STD{OUT,ERR} through the logger (defaults
+   to disabled)
+ - unhandled messages (of unknown types, or delivered outside our
+   subscriptions) are sent to the proper DLQ, instead of ignored
 
 1.0.0     2012-07-17 11:34:14 Europe/London
-- initial release, extracted from NAP-DocIntegrator
+ - initial release, extracted from NAP-DocIntegrator

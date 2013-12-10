@@ -2,6 +2,7 @@ package NAP::Messaging::Role::Producer;
 use NAP::policy 'role','tt';
 use List::MoreUtils ();
 use NAP::Messaging::Validator;
+use NAP::Messaging::Exception::BadConfig;
 use Data::Visitor::Callback;
 use MooseX::ClassAttribute;
 
@@ -75,16 +76,63 @@ Dictionary to map logical destination names to actual
 destinations. Usually set in the configuration:
 
   <Producer::SomeType>
-    <routes_map>
-      SomeDestination  /queue/an_actual_queue
-    </routes_map>
+   <routes_map>
+    SomeDestination  /queue/an_actual_queue
+   </routes_map>
   </Producer::SomeType>
+
+You can also do this:
+
+  <Producer::SomeType>
+   <routes_map>
+    SomeDestination  /queue/an_actual_queue
+    SomeDestination  /queue/another_queue
+   </routes_map>
+  </Producer::SomeType>
+
+to get your producer to send each message to two different
+destinations without altering the code.
+
+You can even alter the type via the configuration:
+
+  <Producer::SomeType>
+   <routes_map>
+    <SomeDestination /queue/an_actual_queue>
+     SomeType real_type
+    </SomeDestination>
+    <SomeDestination /queue/another_queue>
+     SomeType real_type1
+     SomeType real_type2
+    </SomeDestination>
+   </routes_map>
+  </Producer::SomeType>
+
+That would send 3 messages:
+
+=over 4
+
+=item *
+
+one of type C<real_type> to C</queue/an_actual_queue>
+
+=item *
+
+one of type C<real_type1> to C</queue/another_queue>
+
+=item *
+
+one of type C<real_type2> to C</queue/another_queue>
+
+=back
+
+Note: if L</set_at_type> is true, the C<@type> inside each message
+will reflect the mapped type.
 
 =cut
 
 has routes_map => (
     is => 'ro',
-    isa => 'HashRef[Str]',
+    isa => 'HashRef',
     default => sub { +{} },
 );
 
@@ -273,9 +321,13 @@ the L</routes_map> attribute, via the L</map_destination> method.
 
 Keep in mind that, if you did not provide a value for the
 L</destination> attribute, and your C<transform> method does not set
-the destination in the header, an exception will be thrown.
+the destination in the header, a
+L<Net::Stomp::Producer::Exceptions::Invalid> will be thrown.
 
 The payloads are passed trough the L</preprocessor>.
+
+In the unlikely event you need to set the message type inside your
+transformer, please use C<< $header->{type} >>, not C<JMSType>.
 
 =cut
 
@@ -284,12 +336,11 @@ requires 'transform';
 around 'transform' => sub {
     my ($orig,$self,@args) = @_;
 
-    my @rets = $self->$orig({},@args);
+    my @pre_rets = $self->$orig({},@args);
     my $conf = $self->_config;
+    my @rets;
 
-    my $ret_it = List::MoreUtils::natatime 2,@rets;
-
-    while (my ($header,$payload) = $ret_it->()) {
+    while (my ($header,$payload) = splice @pre_rets,0,2) {
         my $dest = $header->{destination} // $self->destination;
 
         if (!defined $dest) {
@@ -302,8 +353,6 @@ around 'transform' => sub {
             });
         }
 
-        $header->{destination} = $self->map_destination($dest);
-
         if ($header->{JMSType} && !$header->{type}) {
             warn qq{$self set "JMSType" in the header. Please don't, and use "type".\n};
             $header->{type} = delete $header->{JMSType};
@@ -314,17 +363,33 @@ around 'transform' => sub {
                 delete $header->{JMSType};
             }
             else {
-                die qq{$self set both "JMSType" and "type" in the header, with different values. I give up\n};
-}
+                Net::Stomp::Producer::Exceptions::Invalid->throw({
+                    transformer => ref($self),
+                    previous_exception => 'no previous exception',
+                    message_header => $header,
+                    message_body => $payload,
+                    reason => qq{$self set both "JMSType" and "type" in the header, with different values. I give up},
+                });
+            }
         }
-
         $header->{type} //= $self->type;
-        if ($self->set_at_type) {
-            # this will go away soon, I promise
-            $payload->{'@type'} //= $header->{type};
-        }
-
         %$payload = %{$self->preprocess_data($payload)};
+
+        my @dest_type_pairs = $self->map_destination_and_type($dest,$header->{type});
+
+        for my $dt (@dest_type_pairs) {
+            my %new_header = %$header;
+            @new_header{qw(destination type)} = @$dt;
+
+            if ($self->set_at_type) {
+                require Storable;
+                $payload = Storable::dclone($payload);
+                # this will go away soon, I promise
+                $payload->{'@type'} //= $header->{type};
+            }
+
+            push @rets, \%new_header,$payload;
+        }
     }
 
     return @rets;
@@ -334,19 +399,78 @@ around 'transform' => sub {
 
   my $destination = $self->map_destination($something);
 
-Looks up C<$something> in the L</routes_map>, returns the corresponding
-value, cleaned up via L</cleanup_destination>.
+Looks up C<$something> in the L</routes_map>, returns the
+corresponding value, cleaned up via L</cleanup_destination>. If
+L</routes_map> maps C<$something> to multiple destinations, an
+L<NAP::Messaging::Exception::BadConfig> is thrown.
 
 =cut
 
 sub map_destination {
     my ($self,$destination) = @_;
 
-    my $conf = $self->_config;
-    if (exists $self->routes_map->{$destination}) {
-        $destination = $self->routes_map->{$destination};
+    my @dest_type_pairs = $self->map_destination_and_type($destination,'*');
+    my @dests = List::MoreUtils::uniq map { $_->[0] } @dest_type_pairs;
+    if (@dests > 1) {
+        NAP::Messaging::Exception::BadConfig->throw({
+            transformer => ref($self),
+            config_snippet => $self->routes_map,
+            detail => "destination $destination maps to multiple real destinations, but the code called map_destination on it",
+        });
     }
-    return $self->cleanup_destination($destination);
+    return $dests[0];
+}
+
+=method C<map_destination_and_type>
+
+  my @dest_type_pairs = $self->map_destination_and_type(
+                                  $some_dest,
+                                  $some_type,
+                        );
+
+Looks up C<$some_dest> in the L</routes_map>, returns the corresponding
+value, cleaned up via L</cleanup_destination>.
+
+=cut
+
+sub map_destination_and_type {
+    my ($self,$destination,$type) = @_;
+
+    my $conf = $self->_config;
+
+    my @ret;
+    if (not exists $self->routes_map->{$destination}) {
+        @ret = [$destination,$type];
+    }
+    else {
+        my $mapped_dest = $self->routes_map->{$destination};
+        # one destination mapped to multiple destinations
+        if (ref($mapped_dest) eq 'ARRAY') {
+            @ret = map { [ $_, $type ] } @$mapped_dest;
+        }
+        # one destination mapped to multiple destinations, and types
+        # mapped inside
+        elsif (ref($mapped_dest) eq 'HASH') {
+            for my $real_dest (keys %$mapped_dest) {
+                my $type_map = $mapped_dest->{$real_dest};
+                my $mapped_type = $type_map->{$type} // $type;
+                # type mapped to multiple types
+                if (ref($mapped_type) eq 'ARRAY') {
+                    push @ret, map { [ $real_dest, $_ ] } @$mapped_type;
+                }
+                # type mapped to a single type
+                else {
+                    push @ret, [ $real_dest, $mapped_type ];
+                }
+            }
+        }
+        # one destinations mapped to a single destination
+        else {
+            @ret = [ $mapped_dest, $type ];
+        }
+    }
+
+    return map { [$self->cleanup_destination($_->[0]),$_->[1]] } @ret;
 }
 
 =method C<cleanup_destination>

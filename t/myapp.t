@@ -40,7 +40,19 @@ subtest 'passing strings' => sub {
         filter_header => superhashof({type => 'string_response'}),
         assert_count => 1,
         assert_body => superhashof({ response => "\x{1F662}\x{1F603}" }),
-    },'reply was sent');
+    },'reply (1/3) was sent');
+    $tester->assert_messages({
+        destination => 'queue/string-reply2',
+        filter_header => superhashof({type => 'string_response1'}),
+        assert_count => 1,
+        assert_body => superhashof({ response => "\x{1F662}\x{1F603}" }),
+    },'reply (2/3) was sent');
+    $tester->assert_messages({
+        destination => 'queue/string-reply2',
+        filter_header => superhashof({type => 'string_response2'}),
+        assert_count => 1,
+        assert_body => superhashof({ response => "\x{1F662}\x{1F603}" }),
+    },'reply (3/3) was sent');
 };
 
 subtest 'passing strings with added random fields' => sub {

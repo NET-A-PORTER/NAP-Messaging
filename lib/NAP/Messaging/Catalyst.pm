@@ -113,6 +113,7 @@ before setup_finalize => sub {
     ));
 
     $class->timing_log(Log::Log4perl->get_logger('timing'));
+    Log::Log4perl->wrapper_register('NAP::Messaging::Timing');
 };
 
 =back

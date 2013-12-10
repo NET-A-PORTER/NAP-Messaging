@@ -1,6 +1,9 @@
 package NAP::Messaging::Timing;
 use NAP::policy 'class','tt';
+use NAP::Logging::JSON;
 use Time::HiRes qw(gettimeofday tv_interval);
+use Tie::IxHash;
+use Moose::Util::TypeConstraints;
 
 # ABSTRACT: simple object to log timing
 
@@ -8,25 +11,26 @@ use Time::HiRes qw(gettimeofday tv_interval);
 
   my $t = NAP::Messaging::Timing->new({
      logger => $ctx->timing_log,
-     details => [qw(some useful info)],
+     details => {some => ['useful,'info']}
   });
 
   # later
 
-  $t->stop(qw(some more info));
+  $t->stop(more=>'info');
 
 This will log, at C<INFO> level:
 
-  start|0|some|useful|info
-  stop|1.4553|some|useful|info|some|more|info
+  { "event":"start","some":["useful","info"] }
+  { "event":"stop","time_taken":1.4553,"some":["useful","info"],"more":"info" }
 
-The number in the second field is the elapsed time, in seconds,
+The number in the C<time_taken> field is the elapsed time, in seconds,
 between the two calls.
 
 =head1 DESCRIPTION
 
 This object uses L<Time::HiRes> to keep track of elapsed time, and
-logs start / stop events to the provided logger.
+logs start / stop events to the provided logger, and
+L<NAP::Logging::JSON> to log JSON strings.
 
 If you don't call L</stop>, it will be called automatically on object
 destruction, so you can make your time measurements exception-safe.
@@ -50,16 +54,41 @@ sub _build_start_ts {
 
 =attr C<details>
 
-Array ref, defaults to C<[]>. If provided, these values will be
-logger, joined by C<|>, for both the start and stop events.
+Araryref of pairs, defaults to C<[]>. If provided, these values will
+be logged, as key=value pairs, for both the start and stop events.
 
 =cut
 
+my $pair_array_name = __PACKAGE__ . '::PairArray';
+subtype $pair_array_name,
+    as 'ArrayRef',
+    where { @$_ %2 == 0 },
+    message { 'An array of pairs must have an even number of elements' };
+my $pair_array_type = Moose::Util::TypeConstraints::find_type_constraint($pair_array_name);
+
 has details => (
     is => 'ro',
-    isa => 'ArrayRef',
+    isa => $pair_array_type,
     default => sub { [] },
 );
+
+=method C<add_details>
+
+  $t->add_details(%hash);
+
+Allows you to add kay-value pairs to the L</details>. They will be
+appended to whatever is already there.
+
+=cut
+
+sub add_details {
+    my ($self,@pairs) = @_;
+
+    $pair_array_type->assert_valid(\@pairs);
+
+    push @{$self->details}, @pairs;
+    return;
+}
 
 =attr C<logger>
 
@@ -87,15 +116,15 @@ has stopped => (
 sub _log_start {
     my ($self) = @_;
 
-    $self->logger->info(join '|', 'start',0, @{$self->details});
+    $self->logger->info(logmsg event=>'start', @{$self->details});
 }
 
 =method C<stop>
 
-  $t->stop(qw(some info));
+  $t->stop(some => 'info');
 
 Logs a "stop" line containing the time elapsed since the object was
-constructed. Both L</details> and the passed arguments will be part of
+constructed. All of L</details>, and the passed hash will be part of
 the log message.
 
 Sets L</stopped> to true; if called when L</stopped> is already true,
@@ -109,7 +138,13 @@ sub stop {
     return if $self->stopped;
 
     my $elapsed = tv_interval($self->start_ts,[gettimeofday]);
-    $self->logger->info(join '|', 'stop',$elapsed,@{$self->details},@extra);
+
+    $self->add_details(@extra);
+    $self->logger->info(
+        logmsg event=>'stop',
+        time_taken => $elapsed,
+        @{$self->details},
+    );
     $self->stopped(1);
 }
 
