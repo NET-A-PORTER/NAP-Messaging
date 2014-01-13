@@ -3,7 +3,7 @@ use NAP::policy 'tt','match';
 use Scalar::Util 'blessed';
 use List::MoreUtils 'uniq';
 use NAP::Messaging::Exception::Validation;
-use Class::MOP;
+use Module::Runtime 'require_module';
 use Data::Rx;
 
 # ABSTRACT: a wrapper around L<Data::Rx>
@@ -41,7 +41,7 @@ schema builder.
 sub add_type_plugins {
     my ($package,@plugins)=@_;
 
-    Class::MOP::load_class($_) for @plugins;
+    require_module($_) for @plugins;
 
     push @type_plugins,@plugins;
     @type_plugins = uniq @type_plugins;
