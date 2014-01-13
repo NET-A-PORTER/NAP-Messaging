@@ -13,6 +13,7 @@ use Net::Stomp::Producer;
 use Net::Stomp::MooseHelpers::TraceOnly 1.002;
 use Path::Class;
 use MooseX::Types::Path::Class;
+use Module::Runtime 'require_module';
 use Test::NAP::Messaging::Helpers 'add_random_fields';
 
 # ABSTRACT: testing helper for NAP::Messaging applications
@@ -502,7 +503,7 @@ sub new_with_app {
         local $ENV{CATALYST_CONFIG} = file($config_file)->absolute
             ->resolve->stringify;
 
-        Class::MOP::load_class($app_class);
+        require_module($app_class);
         $app_class->import();
     }
 

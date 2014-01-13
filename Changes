@@ -1,5 +1,9 @@
 {{$NEXT}}
 
+1.6.4     2014-01-13 15:11:08 Europe/London
+ - removed deprecated Class::Load::load_class, using
+   Module::Runtime::require_module
+
 1.6.3     2013-12-10 13:01:24 Europe/London
  - NAP::Messaging::Role::Producer can now map to multiple destinations
    and types, just like CatalystX::ConsumesJMS can

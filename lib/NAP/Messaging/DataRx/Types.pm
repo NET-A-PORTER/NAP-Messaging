@@ -1,7 +1,7 @@
 package NAP::Messaging::DataRx::Types;
 use NAP::policy 'tt';
 use parent 'Data::Rx::TypeBundle';
-use Class::MOP;
+use Module::Runtime 'require_module';
 
 # ABSTRACT: specialized NAP Data::Rx types
 
@@ -37,4 +37,4 @@ sub type_plugins {
     )
 }
 
-Class::MOP::load_class($_) for type_plugins();
+require_module($_) for type_plugins();
