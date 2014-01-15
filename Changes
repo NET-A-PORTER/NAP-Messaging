@@ -1,5 +1,9 @@
 {{$NEXT}}
 
+1.6.5     2014-01-15 11:05:44 Europe/London
+ - /nap/datetime Data::Rx type now (again) accepts
+   '2014-01-15T10:55:26.000+0000' as a valid date-time value
+
 1.6.4     2014-01-13 15:11:08 Europe/London
  - removed deprecated Class::Load::load_class, using
    Module::Runtime::require_module
