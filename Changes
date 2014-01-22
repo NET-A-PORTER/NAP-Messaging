@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+1.6.6     2014-01-22 17:49:16 Europe/London
+ - always mark inner packages as loaded (via %INC)
+
 1.6.5     2014-01-15 11:05:44 Europe/London
  - /nap/datetime Data::Rx type now (again) accepts
    '2014-01-15T10:55:26.000+0000' as a valid date-time value
