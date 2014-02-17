@@ -1,4 +1,4 @@
 #!perl
 use NAP::policy 'tt';
-use NAP::Messaging::MultiRunner::Partitioned;
-NAP::Messaging::MultiRunner::Partitioned->new('MyApp')->run_multiple;
+use NAP::Messaging::MultiRunner;
+NAP::Messaging::MultiRunner->new('MyApp')->run_multiple;

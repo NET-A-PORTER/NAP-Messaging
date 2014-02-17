@@ -1,0 +1,89 @@
+#!/opt/xt/xt-perl/bin/perl
+
+use NAP::policy qw(tt);
+
+use Config::Any;
+use List::UtilsBy qw(count_by);
+use Module::Runtime q(use_module);
+use Nagios::Plugin;
+use Proc::ProcessTable;
+
+my $np = Nagios::Plugin->new(
+    usage => "Usage: %s [-r|--runner <runner class>] [-u|--user <username>] \n".
+        "    -s|--script <script name> -c|--config <config file>",
+);
+$np->add_arg(
+    spec => 'name|n=s',
+    help => 'Short name for the plugin',
+);
+$np->add_arg(
+    spec => 'runner|r=s',
+    help => 'Name of the runner class',
+    default => 'NAP::Messaging::MultiRunner',
+);
+$np->add_arg(
+    spec => 'config|c=s',
+    help => 'Path to the application config file',
+    required => 1,
+);
+$np->add_arg(
+    spec => 'script|s=s',
+    help => 'Name of the launcher script',
+    required => 1,
+);
+$np->add_arg(
+    spec => 'user|u=s',
+    help => 'Username the application should be running as (default: nobody)',
+    default => 'nobody',
+);
+
+$np->getopts;
+
+$np->shortname(uc $np->opts->name) if $np->opts->name;
+
+my $uid = getpwnam($np->opts->user)
+    or $np->nagios_die("Unknown user ".  $np->opts->user);
+
+my $runner = try { use_module($np->opts->runner) }
+    catch { $np->nagios_die("Can't load runner class: $_") };
+
+my $config_file = $np->opts->config;
+my $config = Config::Any->load_files({
+    use_ext => 1,
+    flatten_to_hash => 1,
+    files => [ $config_file ],
+})->{$config_file}
+    or $np->nagios_die("Can't load config file $config_file");
+
+my $child_config = try { $runner->extract_child_config($config) }
+    catch { $np->nagios_die("Can't exctract child config: $_") };
+
+# supervisor process
+unshift @{$child_config}, {
+    name => 'supervisor',
+    instances => 1,
+};
+
+my $proc_table = Proc::ProcessTable->new(enable_ttys => 0);
+my $script = $np->opts->script;
+# the capture group is used in counting substitution below
+my $script_re = qr/\A\Q$script\E \((.*)\)\z/;
+
+my %running = count_by { $_->cmndline =~ s/$script_re/$1/r }
+    grep { $_->uid == $uid and $_->cmndline =~ $script_re }
+    @{$proc_table->table};
+
+foreach my $child (@{$child_config}) {
+    my ($name, $count) = @{$child}{qw(name instances)};
+    my $running = $running{$name} // 0;
+    $np->add_message(
+        $running == $count ? OK : CRITICAL,
+        sprintf(
+            "%d %s%s;",
+            $running, $name,
+            $running == $count ? '' : " (should be: $count)"
+        ),
+    );
+}
+
+$np->nagios_exit($np->check_messages);

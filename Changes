@@ -1,5 +1,9 @@
 {{$NEXT}}
 
+1.6.7     2014-02-17 11:23:09+00:00 Europe/London
+ - Refactor NAP::Messaging::MultiRunner
+ - Add check_nap_messaging_runner Nagios plugin
+
 1.6.6     2014-01-22 17:49:16 Europe/London
  - always mark inner packages as loaded (via %INC)
 

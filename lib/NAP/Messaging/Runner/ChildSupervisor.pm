@@ -7,7 +7,7 @@ use POSIX ':sys_wait_h';
 
 =head1 SYNOPSIS
 
-  my $children = NAP::DocIntegrator::Role::ChildSupervisor->new({
+  my $children = NAP::Messaging::Runner::ChildSupervisor->new({
     trapped_signals => [ qw(INT TERM QUIT) ],
     code => sub { ... },
   })
@@ -20,14 +20,14 @@ class is still responsible to set up a run-loop and call C<waitpid>.
 
 =attr C<name>
 
-Optional string attribute, used in error messages.
+String attribute, used in error messages and process name.
 
 =cut
 
 has name => (
     is => 'ro',
     isa => 'Str',
-    default => '',
+    required => 1,
 );
 
 =attr C<trapped_signals>
@@ -52,29 +52,11 @@ prevent more children from being forked.
 =cut
 
 has stopping => (
-    is => 'rw',
+    is => 'ro',
+    writer => '_set_stopping',
     isa => 'Bool',
     default => 0,
-    trigger => sub {
-        my ($self,$new,$old) = @_;
-        if ($new && !$old && $self->on_stopping) {
-            $self->on_stopping->();
-        }
-    },
 );
-
-=attr C<on_stopping>
-
-Optional coderef, called when L</stopping> is set to true. This should
-be used to co-ordinate multiple C<ChildSupervisor> objects.
-
-=cut
-
-has on_stopping => (
-    is => 'rw',
-    isa => 'CodeRef',
-);
-
 
 =attr C<logger>
 
@@ -200,8 +182,8 @@ sub fork_and_run {
         exit 1;
     }
     return $pid if $pid;
-    my $name = $self->name ? ' ('.$self->name.')' : '';
-    $0 .= $name;
+    my $name = ' ('.$self->name.')';
+    $0 =~ s/(?: \(.*\))?\z/$name/;
 
     for my $signal (@{$self->trapped_signals}) {
         ## no critic RequireLocalizedPunctuationVars
@@ -217,7 +199,7 @@ sub fork_and_run {
 
   $self->stop_children($signal);
 
-Set L</stopping> to 1, optionally calling L</on_stopping>, then kill
+Set L</stopping> to 1, then kill
 each child process with the given C<$signal>.
 
 =cut
@@ -226,7 +208,7 @@ sub stop_children {
     my ($self,$signal) = @_;
     $signal //= 'TERM';
 
-    $self->stopping(1);
+    $self->_set_stopping(1);
 
     return unless $self->children_count > 0;
 
