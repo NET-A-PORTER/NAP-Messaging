@@ -1,6 +1,12 @@
 {{$NEXT}}
 
+1.6.9     2014-02-20 16:56:52 Europe/London
+ - allow specifying different servers in the <Stomp> configuration
+   section, to consume from a different broker than the one we use to
+   send
+
 1.6.8     2014-02-19 11:28:41+00:00 Europe/London
+ - POD & dir name fixes for the Nagios plugin
 
 1.6.7     2014-02-17 11:23:09+00:00 Europe/London
  - Refactor NAP::Messaging::MultiRunner
