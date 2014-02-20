@@ -4,6 +4,7 @@ use Plack::Handler::Stomp;
 use FindBin::libs;
 use MooseX::Types::LoadableClass qw/ LoadableClass /;
 use Moose::Util::TypeConstraints 'duck_type';
+use Net::Stomp::MooseHelpers::Types 'ServerConfigList';
 
 # ABSTRACT: helper class to start applications
 
@@ -89,6 +90,21 @@ paralell instances off the same configuration (e.g. via
 L<NAP::Messaging::MultiRunner>): the broker will refuse all
 connections after the first.
 
+The broker to connect to will be taken from the application's
+C<Model::MessageQueue>, unless you specify a C<< <servers> >> value in
+the C<Stomp> section, like this:
+
+ <Stomp>
+  <servers>
+   hostname broker.local
+   port     61613
+  </servers>
+  <servers>
+   hostname broker.failover
+   port     61613
+  </servers>
+ </Stomp>
+
 =cut
 
 has handler => (
@@ -100,15 +116,16 @@ has handler => (
 sub _build_handler {
     my ($self) = @_;
     my $appclass = $self->appclass;
+    my $config = $appclass->config->{Stomp} // {};
 
     # we will connect to the same servers as the application uses to send
-    # messages
-    my $servers = $appclass->model('MessageQueue')
-        ->servers;
+    # messages, unless we get specific ones in the Stomp config
+    my $servers = $config->{servers}
+        ? to_ServerConfigList($config->{servers})
+        : $appclass->model('MessageQueue')->servers;
 
     my @subscriptions = $self->subscriptions;
 
-    my $config = $appclass->config->{Stomp} // {};
     my $handler_class = delete $config->{handler_class}
         // 'Plack::Handler::Stomp';
     my $handler_traits = delete $config->{handler_traits};
