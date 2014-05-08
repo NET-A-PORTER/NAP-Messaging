@@ -97,6 +97,9 @@ The subclass objects also gets a C<timer> object, an instance of
 L<NAP::Messaging::Timing>. You can freely set details on it. The timer
 is used to log how long it took to process the message.
 
+The C<timingopts> application config entry is passed to the
+constructor.
+
 =cut
 
 has timer => (
@@ -158,6 +161,7 @@ L<Plack::Handler::Stomp> for details)
         my ($type,$destination) = type_and_destination($ctx);
 
         my $timing = NAP::Messaging::Timing->new({
+            %{$ctx->config->{timingopts} // {}},
             logger => $ctx->timing_log,
             details => [
                 component => ref($self),
