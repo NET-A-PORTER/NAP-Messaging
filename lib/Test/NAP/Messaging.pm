@@ -15,6 +15,7 @@ use Path::Class;
 use MooseX::Types::Path::Class;
 use Module::Runtime 'require_module';
 use Test::NAP::Messaging::Helpers 'add_random_fields';
+use Log::Log4perl::Level;
 
 # ABSTRACT: testing helper for NAP::Messaging applications
 
@@ -546,6 +547,11 @@ package Test::NAP::Messaging::CatalystLog {
     after _log => sub {
         $_[0]->_flush();
     };
+    sub log {
+        my ($self, $level, @message) = @_;
+        my $method = lc Log::Log4perl::Level::to_level($level);
+        $self->$method(@message);
+    }
     sub _send_to_log {
         my ($self,@logs) = @_;
         note join '',@logs;

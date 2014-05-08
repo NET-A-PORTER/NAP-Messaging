@@ -1,6 +1,7 @@
 package NAP::Messaging::Timing;
 use NAP::policy 'class','tt';
 use NAP::Logging::JSON;
+use NAP::Messaging::Types qw(LogLevel LogLevelName);
 use Time::HiRes qw(gettimeofday tv_interval);
 use Tie::IxHash;
 use Moose::Util::TypeConstraints;
@@ -18,7 +19,8 @@ use Moose::Util::TypeConstraints;
 
   $t->stop(more=>'info');
 
-This will log, at C<INFO> level:
+This will log, at the levels specified by L</start_log_level> and
+L</stop_log_level>:
 
   { "event":"start","some":["useful","info"] }
   { "event":"stop","time_taken":1.4553,"some":["useful","info"],"more":"info" }
@@ -101,6 +103,32 @@ has logger => (
     required => 1,
 );
 
+=attr C<start_log_level>
+
+The L<log level name|NAP::Messaging::Types/LogLevelName> at which the
+start event is logged. Default: C<INFO>.
+
+=cut
+
+has start_log_level => (
+    is => 'ro',
+    isa => LogLevelName,
+    default => 'INFO',
+);
+
+=attr C<stop_log_level>
+
+The L<log level name|NAP::Messaging::Types/LogLevelName> at which the
+stop event is logged. Default: C<INFO>.
+
+=cut
+
+has stop_log_level => (
+    is => 'ro',
+    isa => LogLevelName,
+    default => 'INFO',
+);
+
 =attr C<stopped>
 
 Boolean, defaults to false. It's set to true by the L</stop> method.
@@ -116,7 +144,7 @@ has stopped => (
 sub _log_start {
     my ($self) = @_;
 
-    $self->logger->info(logmsg event=>'start', @{$self->details});
+    $self->logger->log(to_LogLevel($self->start_log_level), logmsg event=>'start', @{$self->details});
 }
 
 =method C<stop>
@@ -140,7 +168,7 @@ sub stop {
     my $elapsed = tv_interval($self->start_ts,[gettimeofday]);
 
     $self->add_details(@extra);
-    $self->logger->info(
+    $self->logger->log(to_LogLevel($self->stop_log_level),
         logmsg event=>'stop',
         time_taken => $elapsed,
         @{$self->details},

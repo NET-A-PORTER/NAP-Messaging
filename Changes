@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+1.6.10    2014-05-08 12:03:35+01:00 Europe/London
+ - allow configuring the timing event log levels
+
 1.6.9     2014-02-20 16:56:52 Europe/London
  - allow specifying different servers in the <Stomp> configuration
    section, to consume from a different broker than the one we use to
