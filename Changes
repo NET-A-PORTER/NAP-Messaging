@@ -1,5 +1,9 @@
 {{$NEXT}}
 
+1.6.11    2014-05-15 15:55:26+01:00 Europe/London
+- /nap/datetime Data::Rx type did not accept negative offsets, fixed
+  (CANDO-7944)
+
 1.6.10    2014-05-08 12:03:35+01:00 Europe/London
  - allow configuring the timing event log levels
 
