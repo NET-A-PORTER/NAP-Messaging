@@ -288,6 +288,8 @@ sub assert_messages {
 
     my $failed=0;
 
+    $comment //= "messages on $destination";
+
     $test->subtest($comment, sub {
         for my $frame ($self->messages($destination ? $destination : ())) {
             push @stacks,{};

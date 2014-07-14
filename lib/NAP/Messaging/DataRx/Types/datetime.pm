@@ -4,8 +4,7 @@ use strict;
 use warnings;
 
 use DateTime::Format::ISO8601;
-use parent 'Data::Rx::CoreType';
-use NAP::Messaging::DataRx::Compat;
+use parent 'Data::Rx::CommonType::EasyNew';
 
 # ABSTRACT: A custom datetime type for Data::Rx
 
@@ -48,6 +47,13 @@ sub assert_valid {
     return 1;
 }
 
+sub to_json_schema {
+    return {
+        type => 'string',
+        format => 'date-time',
+    }
+}
+
 1;
 
 =begin Pod::Coverage
@@ -55,5 +61,6 @@ sub assert_valid {
 type_uri
 subname
 assert_valid
+to_json_schema
 
 =end Pod::Coverage
