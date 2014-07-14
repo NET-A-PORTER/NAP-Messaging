@@ -86,7 +86,7 @@ C<handler_class>), and traits / roles to apply to it
   </Stomp>
 
 B<NOTE>: C<client-id> is a bad idea if you plan to run multiple
-paralell instances off the same configuration (e.g. via
+parallel instances off the same configuration (e.g. via
 L<NAP::Messaging::MultiRunner>): the broker will refuse all
 connections after the first.
 

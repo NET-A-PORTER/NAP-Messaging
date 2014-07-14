@@ -56,7 +56,7 @@ sub _build_start_ts {
 
 =attr C<details>
 
-Araryref of pairs, defaults to C<[]>. If provided, these values will
+Arrayref of pairs, defaults to C<[]>. If provided, these values will
 be logged, as key=value pairs, for both the start and stop events.
 
 =cut
@@ -78,7 +78,7 @@ has details => (
 
   $t->add_details(%hash);
 
-Allows you to add kay-value pairs to the L</details>. They will be
+Allows you to add key-value pairs to the L</details>. They will be
 appended to whatever is already there.
 
 =cut

@@ -3,8 +3,7 @@ package NAP::Messaging::DataRx::Types::bool;
 use strict;
 use warnings;
 
-use parent 'Data::Rx::CoreType';
-use NAP::Messaging::DataRx::Compat;
+use parent 'Data::Rx::CommonType::EasyNew';
 
 # ABSTRACT: A custom bool type that accepts '0' or '1' as boolean values.
 
@@ -32,6 +31,10 @@ sub assert_valid {
     });
 }
 
+sub to_json_schema {
+    return { type => 'integer', enum => [0,1] }
+}
+
 1;
 
 =begin Pod::Coverage
@@ -39,5 +42,6 @@ sub assert_valid {
 type_uri
 subname
 assert_valid
+to_json_schema
 
 =end Pod::Coverage

@@ -60,11 +60,15 @@ __PACKAGE__->config(
         },
         transformer_args => {
         },
+        extra_connection_builder_args => {
+        },
     },
 );
 
 around COMPONENT => sub {
     my ($orig, $class, $app, @rest) = @_;
+    my $args = $rest[-1];
+    $args->{extra_connection_builder_args}{logger} = $app->log;
     my $instance = $class->$orig($app,@rest);
 
     $instance->transformer_args->{_global_config} = $app->config;
