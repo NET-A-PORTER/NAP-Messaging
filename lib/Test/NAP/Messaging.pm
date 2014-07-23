@@ -405,7 +405,9 @@ sub request {
     });
 
     # this may be wrong. path maps may well be needed.
-    my $phs = Plack::Handler::Stomp->new();
+    my $phs = Plack::Handler::Stomp->new({
+        connection => $self->producer->connection,
+    });
     my $psgi_env = $phs->build_psgi_env($frame);
     my $psgi_response = $app->($psgi_env);
 

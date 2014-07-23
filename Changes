@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+1.6.13    2014-07-17 10:03:51+01:00 Europe/London
+ - fix Test::NAP::Messaging w.r.t. newer Plack::Handler::Stomp
+
 1.6.12    2014-07-14 17:22:52+01:00 Europe/London
  - add JSON Schema support to Rx types
  - set the logger for the producer
