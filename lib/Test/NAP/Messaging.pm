@@ -288,10 +288,10 @@ sub assert_messages {
 
     my $failed=0;
 
-    $comment //= "messages on $destination";
+    $comment //= "messages on " . ($destination // "all destinations");
 
     $test->subtest($comment, sub {
-        for my $frame ($self->messages($destination ? $destination : ())) {
+        for my $frame ($self->messages($destination // ())) {
             push @stacks,{};
 
             my ($fh,$fstackh) = cmp_details($frame->headers,$filter_header);
