@@ -5,6 +5,7 @@ use NAP::Messaging::Validator;
 use NAP::Messaging::Exception::BadConfig;
 use Data::Visitor::Callback;
 use MooseX::ClassAttribute;
+use Time::HiRes 'gettimeofday';
 
 # ABSTRACT: role to help write ActiveMQ producers
 
@@ -329,6 +330,16 @@ The payloads are passed trough the L</preprocessor>.
 In the unlikely event you need to set the message type inside your
 transformer, please use C<< $header->{type} >>, not C<JMSType>.
 
+The header C<producer-timestamp> is set to the current epoch time, in
+milliseconds. This, in conjuction with the C<timestamp> header that
+the broker sets, and the timing logs provided by
+L<NAP::Messaging::Timing> via L<NAP::Messaging::Role::ConsumesJMS>,
+should help debug message propagation issues. Please keep in mind that
+C<producer-timestamp> is set in this call, not when the message is
+actually sent over the socket to the broker, so if you call C<<
+->transform >> long before C<< ->send >>, your timing will be a bit
+off.
+
 =cut
 
 requires 'transform';
@@ -375,6 +386,11 @@ around 'transform' => sub {
         $header->{type} //= $self->type;
         %$payload = %{$self->preprocess_data($payload)};
 
+        # set the producer timestamp in the same format as the
+        # 'timestamp' that the AMQ broker sets
+        my ($secs,$usecs)=gettimeofday;
+        $header->{'producer-timestamp'}=sprintf '%d%03d',$secs,$usecs/1000;
+
         my @dest_type_pairs = $self->map_destination_and_type($dest,$header->{type});
 
         for my $dt (@dest_type_pairs) {
@@ -401,7 +417,7 @@ around 'transform' => sub {
 
 Looks up C<$something> in the L</routes_map>, returns the
 corresponding value, cleaned up via L</cleanup_destination>. If
-L</routes_map> maps C<$something> to multiple destinations, an
+L</routes_map> maps C<$something> to multiple destinations, a
 L<NAP::Messaging::Exception::BadConfig> is thrown.
 
 =cut
@@ -428,8 +444,29 @@ sub map_destination {
                                   $some_type,
                         );
 
-Looks up C<$some_dest> in the L</routes_map>, returns the corresponding
-value, cleaned up via L</cleanup_destination>.
+Looks up C<$some_dest> and C<$some_type> in the L</routes_map>,
+according to these rules:
+
+=begin :list
+
+* if L</routes_map> has no key C<$some_dest>, returns C<< [ $some_dest, $some_type ] >>
+* if the value corresponding to C<$some_dest> is a string, returns C<< [ $the_value, $some_type ] >>
+* if the value is an arrayref, returns C<< [ $array_elem, $some_type ] >> for each element of the array
+* if the value is a hashref, the keys are taken to be destinations to map to, and for each of them (let's call it C<$dest_hash_key>):
+
+=begin :list
+
+* if the inner value is undef, returns C<< [ $dest_hash_key, $some_type ] >>
+* if the inner value is a string, returns C<< [ $dest_hash_key, $the_inner_value ] >>
+* if the inner value is an array, returns C<< [ $dest_hash_key, $array_elem] >> for each element of the array
+
+=end :list
+
+=end :list
+
+All destination values are cleaned up via L</cleanup_destination>.
+
+See L</routes_map> for some examples.
 
 =cut
 

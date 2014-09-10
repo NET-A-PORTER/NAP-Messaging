@@ -168,6 +168,7 @@ L<Plack::Handler::Stomp> for details)
                 message_type => $type,
                 message_destination => $destination,
                 message_id => $msg_id,
+                headers => $ctx->stash->{headers},
             ],
         });
         $self->_set_timer($timing);

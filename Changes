@@ -1,5 +1,9 @@
 {{$NEXT}}
 
+1.6.15    2014-09-10 14:32:36+01:00 Europe/London
+ - set the producer-timestamp header for every message sent, to aid in
+   debugging broker problems
+
 1.6.14    2014-07-23 12:47:20+01:00 Europe/London
  - fix subtest name defaulting when destination is not specified
 
