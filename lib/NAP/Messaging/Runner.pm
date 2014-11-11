@@ -29,13 +29,15 @@ This class wraps the repetitive steps needed to start a L<NAP::Messaging>-based 
 =attr C<appclass>
 
 The application class to use. Required. The application will be loaded
-if it hasn't been already.
+if it hasn't been already. You can also pass an application I<object>
+here, as long as it implements the C<log>, C<jms_destinations>, and
+C<config> methods.
 
 =cut
 
 has appclass => (
     is => 'ro',
-    isa => LoadableClass,
+    isa => LoadableClass | duck_type([qw(log jms_destinations config)]),
     required => 1,
     coerce => 1,
 );

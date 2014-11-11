@@ -1,5 +1,9 @@
 {{$NEXT}}
 
+1.6.16    2014-11-11 14:45:22+00:00 Europe/London
+ - allow passing an application *object* to NAP::Messaging::Runner, as
+   long as it implements the appropriate methods
+
 1.6.15    2014-09-10 14:32:36+01:00 Europe/London
  - set the producer-timestamp header for every message sent, to aid in
    debugging broker problems
