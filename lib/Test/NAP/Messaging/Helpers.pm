@@ -1,4 +1,5 @@
-{package Test::NAP::Messaging::Helpers;
+{
+package Test::NAP::Messaging::Helpers;
 use NAP::policy 'exporter','tt';
 use Sub::Exporter -setup => {
     exports => [ 'napdate', 'atleast', 'add_random_fields' ],
@@ -59,7 +60,8 @@ sub add_random_fields {
 
 }
 
-{package Test::NAP::Messaging::Helpers::DateCompare;
+{
+package Test::NAP::Messaging::Helpers::DateCompare;
     use strict;use warnings;
     use Scalar::Util qw( blessed );
     use parent 'Test::Deep::Cmp';
@@ -102,7 +104,8 @@ sub add_random_fields {
     }
 }
 
-{package Test::NAP::Messaging::Helpers::AtLeast;
+{
+package Test::NAP::Messaging::Helpers::AtLeast;
     use strict;use warnings;
     use parent 'Test::Deep::Cmp';
 
