@@ -36,6 +36,9 @@ sub munge_the_string {
         string => $message->value . "\x{1F603}",
     });
 
+    $self->amq->transform_and_send('Imported::Producer::Something');
+    $self->amq->transform_and_send('MyApp::SpecialProducer::Thing');
+
     $self->log->info("string sent");
 
     return;

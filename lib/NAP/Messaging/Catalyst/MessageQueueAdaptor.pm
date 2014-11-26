@@ -43,8 +43,8 @@ We use this adapter to avoid writing nearly-empty model classes, and
 to make it easier to apply tracing roles.
 
 We use L<NAP::Messaging::Serialiser> for serialisation, and we default
-to persistent delivery. We pass the application's configuration to the
-transformers' ("producers") constructors to allow
+to persistent delivery. We pass the application's configuration and
+name to the transformers' ("producers") constructors to allow
 L<NAP::Messaging::Role::Producer> to map destinations via the config
 file.
 
@@ -72,5 +72,6 @@ around COMPONENT => sub {
     my $instance = $class->$orig($app,@rest);
 
     $instance->transformer_args->{_global_config} = $app->config;
+    $instance->transformer_args->{_app_name} = ref($app)||$app;
     return $instance;
 };

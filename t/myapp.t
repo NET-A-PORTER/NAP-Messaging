@@ -53,6 +53,17 @@ subtest 'passing strings' => sub {
         assert_count => 1,
         assert_body => superhashof({ response => "\x{1F662}\x{1F603}" }),
     },'reply (3/3) was sent');
+
+    $tester->assert_messages({
+        destination => 'queue/something',
+        filter_header => superhashof({type => 'something'}),
+        assert_count => 1,
+    },'imported producer works');
+    $tester->assert_messages({
+        destination => 'queue/special',
+        filter_header => superhashof({type => 'special'}),
+        assert_count => 1,
+    },'non-standard producer name works');
 };
 
 subtest 'passing strings with added random fields' => sub {

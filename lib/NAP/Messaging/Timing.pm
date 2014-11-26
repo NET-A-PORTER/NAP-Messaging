@@ -2,6 +2,7 @@ package NAP::Messaging::Timing;
 use NAP::policy 'class','tt';
 use NAP::Logging::JSON;
 use NAP::Messaging::Types qw(LogLevel LogLevelName);
+use List::AllUtils qw(reduce);
 use Time::HiRes qw(gettimeofday tv_interval);
 use Tie::IxHash;
 use Moose::Util::TypeConstraints;
@@ -141,6 +142,86 @@ has stopped => (
     default => 0,
 );
 
+=attr C<graphite>
+
+A L<Net::Graphite> object (or one with a compatible
+L<send|Net::Graphite/send> method) used to send metrics.
+
+=cut
+
+has graphite => (
+    is => 'ro',
+    isa => duck_type(['send']),
+    predicate => 'has_graphite',
+);
+
+=attr C<graphite_path>
+
+An arrayref of fields to build the Graphite path from, which will be
+appended to any L<path|Net::Graphite/path> in L</graphite>.
+
+Each item can be one of:
+
+=over
+
+=item a string
+
+Used verbatim.
+
+=item a reference to a string
+
+The corresponding key is looked up in L</details>.
+
+=back
+
+Use the L</append_path> method to add elements to the path.
+
+=method C<append_path>
+
+Appends path elements to L</graphite_path>.
+
+=cut
+
+has graphite_path => (
+    is => 'ro',
+    isa => 'ArrayRef',
+    traits => ['Array'],
+    handles => { append_path => 'push' },
+    default => sub { [] },
+);
+
+=attr C<graphite_metrics>
+
+Arrayref of L</details> fields to send as metrics.
+The values must be either numbers or hashref where the leaf elements are numbers.
+
+=cut
+
+has graphite_metrics => (
+    is => 'rw',
+    isa => 'ArrayRef[Str]',
+    traits => ['Array'],
+    handles => {
+        _add_metrics => 'push',
+    },
+    default => sub { [] },
+);
+
+=method C<add_metrics>
+
+Like L</add_details>, but also adds the keys to L</graphite_metrics>
+to send them to Graphite.
+
+=cut
+
+sub add_metrics {
+    my ($self, @details) = @_;
+    $self->add_details(@details);
+    # add_details asserts that @details is a key/value list,
+    # so we can safely feed it to keys via a hashref to get the names
+    $self->_add_metrics(keys %{{@details}});
+}
+
 sub _log_start {
     my ($self) = @_;
 
@@ -155,6 +236,8 @@ Logs a "stop" line containing the time elapsed since the object was
 constructed. All of L</details>, and the passed hash will be part of
 the log message.
 
+If L</graphite> is set, also sends the registered L</graphite_metrics>.
+
 Sets L</stopped> to true; if called when L</stopped> is already true,
 does nothing. You can only stop a timer once.
 
@@ -165,14 +248,36 @@ sub stop {
 
     return if $self->stopped;
 
-    my $elapsed = tv_interval($self->start_ts,[gettimeofday]);
+    my $now = [gettimeofday];
+    my $elapsed = tv_interval($self->start_ts,$now);
 
     $self->add_details(@extra);
-    $self->logger->log(to_LogLevel($self->stop_log_level),
-        logmsg event=>'stop',
+    my @details = (
+        event => 'stop',
         time_taken => $elapsed,
         @{$self->details},
     );
+    $self->logger->log(to_LogLevel($self->stop_log_level),
+        logmsg @details
+    );
+    if ($self->has_graphite) {
+        my %details = @details;
+        my $metrics = {
+            map { $_ => $details{$_} }
+            grep { defined $details{$_} }
+            'time_taken', @{$self->graphite_metrics}
+        };
+        # turn $metrics, $path_field2, $path_field1 into
+        # { $path_field1 => { $path_field2 => $metrics } }
+        # looking up scalarrefs the path in %details
+        $self->graphite->send(data => {
+            $now->[0] => reduce {
+                !ref($b)              ? { $b => $a }
+              : defined $details{$$b} ? { $details{$$b} => $a }
+              : $a
+            } $metrics, reverse @{$self->graphite_path},
+        });
+    }
     $self->stopped(1);
 }
 

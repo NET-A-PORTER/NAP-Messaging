@@ -100,6 +100,11 @@ is used to log how long it took to process the message.
 The C<timingopts> application config entry is passed to the
 constructor.
 
+If C<timingopts> contains the key C<graphite_model>, the value of this
+is used to get a model object that's passed as the
+L<C<graphite>|NAP::Messaging::Timing/graphite> argument to the
+constructor.
+
 =cut
 
 has timer => (
@@ -160,7 +165,7 @@ L<Plack::Handler::Stomp> for details)
         my $msg_id = $ctx->stash->{headers}{'message-id'}//'no-id';
         my ($type,$destination) = type_and_destination($ctx);
 
-        my $timing = NAP::Messaging::Timing->new({
+        my %opts = (
             %{$ctx->config->{timingopts} // {}},
             logger => $ctx->timing_log,
             details => [
@@ -170,7 +175,12 @@ L<Plack::Handler::Stomp> for details)
                 message_id => $msg_id,
                 headers => $ctx->stash->{headers},
             ],
-        });
+        );
+        if (my $model = delete $opts{graphite_model}) {
+            $opts{graphite} = $ctx->model($model);
+            $opts{graphite_path} = [ consume => $type ];
+        }
+        my $timing = NAP::Messaging::Timing->new(%opts);
         $self->_set_timer($timing);
         Log::Log4perl::MDC->put(message_type=>$type);
         Log::Log4perl::MDC->put(message_destination=>$destination);

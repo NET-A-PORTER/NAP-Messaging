@@ -1,5 +1,11 @@
 {{$NEXT}}
 
+1.7.0     2014-11-26 15:05:21+00:00 Europe/London
+ - support sending timing information to Graphite
+ - clarify the rules that ::Role::Producer uses to find its
+   configuration, and make sure that we only strip the application's
+   name from a producer's class name
+
 1.6.17    2014-11-13 17:29:55+00:00 Europe/London
  - more uglyness to cater to RPM find-provides
 

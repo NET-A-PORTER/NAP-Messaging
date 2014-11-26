@@ -35,6 +35,21 @@ it for you.
 NOTE: C<< $payload->{'@type'} >> is a fossil, and will be removed
 soon.
 
+=head2 Notes on the configuration
+
+This role expects to be passed the global application configuration
+hashref, and the application name
+(L<NAP::Messaging::Catalyst::MessageQueueAdaptor> does that). The
+configuration for the class consuming this role is taken from the
+global configuration, using a key derived from the class name. If the
+class name starts with the application name followed by C<::Producer>,
+for example C<MyApp::Producer::SomeType> in the application C<MyApp>,
+then the key is the class name with the application name removed
+(i.e. C<Producer::SomeType>); in all other cases the key is the full
+class name: so C<NotTheApp::Producer::SomeType> or
+C<MyApp::NotAProducer::SomeType> would bboth use their full class name
+to find their configuration.
+
 =head1 ATTRIBUTES
 
 =cut
@@ -152,11 +167,16 @@ has set_at_type => (
 );
 
 sub _config {
-    my ($self,$global_config) = @_;
+    my ($self,$global_config,$app_name) = @_;
 
     my $class = ref($self) || $self;
 
-    $class =~ s{^.*?::(?=Producer::)}{};
+    if ($app_name) {
+        $class =~ s{^\Q$app_name\E::(?=Producer::)}{};
+    }
+    else {
+        $class =~ s{^.*?::(?=Producer::)}{};
+    }
 
     if (exists $global_config->{$class}) {
         return $global_config->{$class};
@@ -167,7 +187,10 @@ sub _config {
 around BUILDARGS => sub {
     my ($orig,$self,@args) = @_;
     my $args = $self->$orig(@args);
-    my $config = $self->_config(delete $args->{_global_config});
+    my $config = $self->_config(
+        delete $args->{_global_config},
+        delete $args->{_app_name},
+    );
     return { %$config,%$args };
 };
 

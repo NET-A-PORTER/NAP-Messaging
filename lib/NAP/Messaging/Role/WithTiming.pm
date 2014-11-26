@@ -17,6 +17,11 @@ to the class name).
 The C<timingopts> application config entry is passed to the
 constructor.
 
+If C<timingopts> contains the key C<graphite_model>, the value of this
+is used to get a model object that's passed as the
+L<C<graphite>|NAP::Messaging::Timing/graphite> argument to the
+constructor.
+
 =cut
 
 requires '_c';
@@ -24,9 +29,13 @@ requires '_c';
 sub timing {
     my ($self,@details) = @_;
 
-    return NAP::Messaging::Timing->new({
+    my %opts = (
         %{$self->_c->config->{timingopts} // {}},
         logger => $self->_c->timing_log,
         details => [caller=>ref($self),@details],
-    });
+    );
+    if (my $model = delete $opts{graphite_model}) {
+        $opts{graphite} = $self->_c->model($model);
+    }
+    return NAP::Messaging::Timing->new(%opts);
 }
