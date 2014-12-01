@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+1.7.1     2014-12-01 10:00:45+00:00 Europe/London
+ - fix regression with the new configuration logic in ::Role::Producer
+
 1.7.0     2014-11-26 15:05:21+00:00 Europe/London
  - support sending timing information to Graphite
  - clarify the rules that ::Role::Producer uses to find its

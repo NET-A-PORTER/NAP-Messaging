@@ -1,6 +1,6 @@
 package NAP::Messaging::Role::Producer;
 use NAP::policy 'role','tt';
-use List::MoreUtils ();
+use List::AllUtils qw(uniq first);
 use NAP::Messaging::Validator;
 use NAP::Messaging::Exception::BadConfig;
 use Data::Visitor::Callback;
@@ -41,14 +41,56 @@ This role expects to be passed the global application configuration
 hashref, and the application name
 (L<NAP::Messaging::Catalyst::MessageQueueAdaptor> does that). The
 configuration for the class consuming this role is taken from the
-global configuration, using a key derived from the class name. If the
-class name starts with the application name followed by C<::Producer>,
-for example C<MyApp::Producer::SomeType> in the application C<MyApp>,
-then the key is the class name with the application name removed
-(i.e. C<Producer::SomeType>); in all other cases the key is the full
-class name: so C<NotTheApp::Producer::SomeType> or
-C<MyApp::NotAProducer::SomeType> would bboth use their full class name
-to find their configuration.
+global configuration, in this way:
+
+=over 4
+
+=item 1
+
+is there a  configuration section under the whole class name? use that
+
+=item 2
+
+is there a configuration section under the class name stripped of the application name? use that
+
+=item 3
+
+is there a configuration section under the class name stripped of whatever comes before C<Producer>? use that
+
+=item 4
+
+assume there is no configuration
+
+=back
+
+Example:
+
+=over 4
+
+=item *
+
+the configuration of C<MyApp::Producer::SomeType> in the application
+C<MyApp> is looked for under C<MyApp::Producer::SomeType> and then
+C<Producer::SomeType>
+
+=item *
+
+the configuration of C<NotTheApp::Producer::SomeType> in the same
+application is looked for under C<NotTheApp::Producer::SomeType> then
+C<Producer::SomeType>
+
+=item *
+
+the configuration of C<MyApp::NotAProducer::SomeType> again in the
+same application is looked for under C<MyApp::NotAProducer::SomeType>
+then C<NotAProducer::SomeType>
+
+=item *
+
+the configuration of C<NotTheApp::NotAProducer::SomeType> is looked
+only under C<NotTheApp::NotAProducer::SomeType>
+
+=back
 
 =head1 ATTRIBUTES
 
@@ -171,17 +213,16 @@ sub _config {
 
     my $class = ref($self) || $self;
 
-    if ($app_name) {
-        $class =~ s{^\Q$app_name\E::(?=Producer::)}{};
-    }
-    else {
-        $class =~ s{^.*?::(?=Producer::)}{};
-    }
+    my @key_candidates = ($class);
 
-    if (exists $global_config->{$class}) {
-        return $global_config->{$class};
+    if ($app_name) {
+        push @key_candidates, $class =~ s{^\Q$app_name\E::}{}r;
     }
-    return {}
+    push @key_candidates, $class =~ s{^.*?::(?=Producer::)}{}r;
+
+    my $local_config_key = first { exists $global_config->{$_} } @key_candidates;
+
+    return $local_config_key ? $global_config->{$local_config_key} : {};
 }
 
 around BUILDARGS => sub {
@@ -449,7 +490,7 @@ sub map_destination {
     my ($self,$destination) = @_;
 
     my @dest_type_pairs = $self->map_destination_and_type($destination,'*');
-    my @dests = List::MoreUtils::uniq map { $_->[0] } @dest_type_pairs;
+    my @dests = uniq map { $_->[0] } @dest_type_pairs;
     if (@dests > 1) {
         NAP::Messaging::Exception::BadConfig->throw({
             transformer => ref($self),
