@@ -205,7 +205,7 @@ END {
 }
 our @trapped_signals = qw(INT TERM QUIT);
 for my $signal (@trapped_signals) {
-    ## no critic RequireLocalizedPunctuationVars
+    ## no critic (RequireLocalizedPunctuationVars)
     $SIG{$signal} = sub { $_->stop_children for values %instances };
 }
 

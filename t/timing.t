@@ -4,6 +4,8 @@ use NAP::Messaging::Timing;
 use Time::HiRes 'sleep';
 use Log::Log4perl qw(:levels);
 
+## no critic (ProhibitMultiplePackages)
+
 package FakeLogger {
     use NAP::policy 'class','tt';
 

@@ -2,7 +2,7 @@ package Test::NAP::Messaging;
 use NAP::policy 'class','tt';
 use Net::Stomp::MooseHelpers::ReadTrace 1.002;
 use Net::Stomp::Frame;
-use Plack::Handler::Stomp;
+use Plack::Handler::Stomp::NoNetwork;
 use Test::Builder;
 use Test::Deep qw(cmp_details deep_diag ignore);
 use NAP::Messaging::Serialiser;
@@ -216,11 +216,11 @@ the order they were produced.
 =cut
 
 sub messages {
-    my $self=shift;
+    my ($self,@destinations)=@_;
 
     my @ret;
 
-    for my $frame ($self->frame_reader->sorted_frames(@_)) {
+    for my $frame ($self->frame_reader->sorted_frames(@destinations)) {
         # ignore ACK, CONNECT, SUBSCRIBE and the like
         next unless $frame->command eq 'SEND'
             || $frame->command eq 'MESSAGE';
@@ -405,7 +405,7 @@ sub request {
     });
 
     # this may be wrong. path maps may well be needed.
-    my $phs = Plack::Handler::Stomp->new({
+    my $phs = Plack::Handler::Stomp::NoNetwork->new({
         connection => $self->producer->connection,
     });
     my $psgi_env = $phs->build_psgi_env($frame);
@@ -545,7 +545,7 @@ sub new_with_app {
     return ($tester,$entry_point);
 }
 
-package Test::NAP::Messaging::CatalystLog {
+package Test::NAP::Messaging::CatalystLog { ## no critic (ProhibitMultiplePackages)
     use NAP::policy 'class','test';
     extends 'Catalyst::Log';
     after _log => sub {

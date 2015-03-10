@@ -13,6 +13,6 @@ Shortcut for C<< $the_application->log >>.
 
 requires '_c';
 
-sub log { ## no critic ProhibitBuiltinHomonyms
+sub log {
     return shift->_c->log
 }

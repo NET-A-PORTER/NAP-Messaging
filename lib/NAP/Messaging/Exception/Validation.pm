@@ -14,7 +14,7 @@ use overload
         $schema->validate($data);
     }
     catch {
-	when (match_instance_of('Data::Rx::FailureSet')) {
+       when (match_instance_of('Data::Rx::FailureSet')) {
             my $exc = NAP::Messaging::Exception::Validation->new({
                 source_class => __PACKAGE__,
                 data => $data,

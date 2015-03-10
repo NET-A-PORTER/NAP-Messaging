@@ -151,7 +151,7 @@ sub fork_all {
 
     my $instances = $self->instances;
 
-    return unless $instances > 0;
+    return if $instances <= 0;
 
     $self->logger->info(
         sprintf 'Starting up to %d %s children',
@@ -186,7 +186,7 @@ sub fork_and_run {
     $0 =~ s/(?: \(.*\))?\z/$name/;
 
     for my $signal (@{$self->trapped_signals}) {
-        ## no critic RequireLocalizedPunctuationVars
+        ## no critic (RequireLocalizedPunctuationVars)
         $SIG{$signal} = 'DEFAULT';
     }
 
@@ -210,7 +210,7 @@ sub stop_children {
 
     $self->_set_stopping(1);
 
-    return unless $self->children_count > 0;
+    return if $self->children_count <= 0;
 
     $self->logger->info(sprintf 'stopping all %s children',
                     $self->name)

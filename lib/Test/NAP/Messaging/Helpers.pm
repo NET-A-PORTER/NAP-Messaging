@@ -1,6 +1,7 @@
+## no critic (ProhibitMultiplePackages,RequireUseStrict,RequireUseWarnings,RequireTrue,RequireExplicitPackage)
 {
 package Test::NAP::Messaging::Helpers;
-use NAP::policy 'exporter','tt';
+use NAP::policy 'exporter';
 use Sub::Exporter -setup => {
     exports => [ 'napdate', 'atleast', 'add_random_fields' ],
     groups => [ default => [ 'napdate', 'atleast' ] ],

@@ -1,3 +1,4 @@
+## no critic (ProhibitMultiplePackages,RequireUseStrict,RequireUseWarnings,RequireTrue)
 package NAP::Messaging::DataRx::Compat {
 use NAP::policy;
 use Sub::Install;
@@ -49,7 +50,7 @@ the other helper methods.
 sub import {
     my $caller = caller;
 
-    my $caller_isa = do {
+    my $caller_isa = do { ## no critic (ProhibitNoStrict)
         no strict 'refs';
         \@{"${caller}::ISA"};
     };

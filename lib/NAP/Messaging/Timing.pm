@@ -13,7 +13,7 @@ use Moose::Util::TypeConstraints;
 
   my $t = NAP::Messaging::Timing->new({
      logger => $ctx->timing_log,
-     details => {some => ['useful,'info']}
+     details => [some => ['useful,'info']],
   });
 
   # later

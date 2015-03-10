@@ -1,5 +1,5 @@
 package NAP::Messaging;
-## no critic
+use strict;use warnings;
 # ABSTRACT: documentation for the NAP Perl messaging framework
 warn "why are you using a documentation-only package?";
 1;
@@ -23,16 +23,17 @@ Consumer component:
 
   package MyApp::Consumer::One;
   use NAP::policy 'class';
+  use NAP::Messaging::Utils 'ignore_extra_fields_deep';
   extends 'NAP::Messaging::Base::Consumer';
 
   sub routes {
     return {
       my_input_queue => {
         my_message_type => {
-          spec => {
+          spec => ignore_extra_fields_deep({
             type => '//rec',
             required => { count => '//int'},
-          },
+          }),
           code => \&my_consume_method,
         },
       },
@@ -80,22 +81,19 @@ Configuration:
    enable 1
   </stacktrace>
 
-  <setup_components>
-   search_extra [ ::Consumer ]
-  </setup_components>
-
   <Plugin::ErrorCatcher>
    enable 1
   </Plugin::ErrorCatcher>
 
   <Stomp>
-   <connect_headers>
-    client-id myapp
-   </connect_headers>
    <subscribe_headers>
     activemq.exclusive false
     activemq.prefetchSize 1
    </subscribe_headers>
+   <servers>
+    hostname localhost
+    port     61613
+   </servers>
   </Stomp>
 
   <Model::MessageQueue>
@@ -105,9 +103,6 @@ Configuration:
      hostname localhost
      port     61613
     </servers>
-    <connect_headers>
-     client-id myapp-sending
-    </connect_headers>
    </args>
   </Model::MessageQueue>
 
@@ -127,8 +122,8 @@ The script to run it:
 
   #!perl
   use NAP::policy;
-  use NAP::Messaging::Runner;
-  NAP::Messaging::Runner->new('MyApp')->run;
+  use NAP::Messaging::MultiRunner;
+  NAP::Messaging::MultiRunner->new('MyApp')->run_multiple;
 
 =head1 IN-DEPTH DOCS
 
@@ -139,4 +134,4 @@ The script to run it:
 * L<NAP::Messaging::Role::Producer> for the producer helper
 * L<NAP::Messaging::Validator> for incoming / outgoing message validation
 * L<Test::NAP::Messaging> for testing applications
-* L<NAP::Messaging::Runner> and its subclasses to start the application
+* L<NAP::Messaging::MultiRunner> and L<NAP::Messaging::Runner> to start the application

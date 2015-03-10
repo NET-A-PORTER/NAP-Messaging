@@ -1,5 +1,10 @@
 {{$NEXT}}
 
+1.7.2     2015-03-10 12:10:40+00:00 Europe/London
+ - fix bug that required a local AMQ broker to run
+   Test::NAP::Messaging
+ - better documentation
+
 1.7.1     2014-12-01 10:00:45+00:00 Europe/London
  - fix regression with the new configuration logic in ::Role::Producer
 

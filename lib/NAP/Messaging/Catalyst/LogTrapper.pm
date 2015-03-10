@@ -1,5 +1,6 @@
+## no critic (ProhibitMultiplePackages,RequireUseStrict,RequireUseWarnings,RequireTrue)
 package NAP::Messaging::Catalyst::LogTrapper {
-use NAP::policy 'role','tt';
+use NAP::policy 'role';
 
 # ABSTRACT: Catalyst plugin to tie STDIN/STDERR to the logger
 
@@ -35,7 +36,7 @@ after setup_finalize => sub {
 };
 
 package NAP::Messaging::Catalyst::LogTrapper::Tied {
-use NAP::policy 'class','tt';
+use NAP::policy 'class';
 use Log::Log4perl ();
 
 has original_fh => (

@@ -1,4 +1,5 @@
 package NAP::Messaging::Catalyst::Handle404;
+use NAP::policy;
 use NAP::Messaging::Catalyst::Utils qw(extract_jms_headers type_and_destination stuff_on_error_queue);
 
 # ABSTRACT: function and roles to put unknown messages into a DLQ
@@ -36,10 +37,11 @@ sub handle404 {
     return;
 }
 
+## no critic (ProhibitMultiplePackages,ProhibitBuiltinHomonyms)
+
 package NAP::Messaging::Catalyst::Handle404::RootRole {
-    use NAP::policy 'role','tt';
+    use NAP::policy 'role';
     use MooseX::MethodAttributes::Role;
-    $INC{'NAP/Messaging/Catalyst/Handle404/RootRole.pm'}=__FILE__;
     sub default : Private {
         my ( $self, $ctx ) = @_;
         return NAP::Messaging::Catalyst::Handle404::handle404(
@@ -50,9 +52,8 @@ package NAP::Messaging::Catalyst::Handle404::RootRole {
 }
 
 package NAP::Messaging::Catalyst::Handle404::ConsumerRole {
-    use NAP::policy 'role','tt';
+    use NAP::policy 'role';
     use MooseX::MethodAttributes::Role;
-    $INC{'NAP/Messaging/Catalyst/Handle404/ConsumerRole.pm'}=__FILE__;
     sub default : Private {
         my ( $self, $ctx ) = @_;
         return NAP::Messaging::Catalyst::Handle404::handle404(

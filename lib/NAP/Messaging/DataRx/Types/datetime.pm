@@ -29,10 +29,11 @@ sub subname { 'datetime' };
 sub assert_valid {
     my ($self, $value) = @_;
 
-    $value = "$value";
-    $value =~ s{[+-](\d\d)(\d\d)\z}{\+$1:$2};
-
     eval {
+        die "Invalid date format: <undef>" unless defined $value;
+        $value = "$value";
+        $value =~ s{([+-]\d\d)(\d\d)\z}{$1:$2};
+
         DateTime::Format::ISO8601->parse_datetime( "$value" );
     };
 
